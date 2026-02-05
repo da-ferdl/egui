@@ -1,5 +1,4 @@
-// => Disabled to not report errors as the egui changes are not adapted to eframe (because I use the xframe variant)
-/*/! eframe - the [`egui`] framework crate
+//! eframe - the [`egui`] framework crate
 //!
 //! If you are planning to write an app for web or native,
 //! and want to use [`egui`] for everything, then `eframe` is for you!
@@ -623,4 +622,3 @@ impl std::fmt::Display for Error {
 
 /// Short for `Result<T, eframe::Error>`.
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
-*/

@@ -1,3 +1,7 @@
+#### Fork notice:
+The egui dependencies of the demo app are set to the egui upstream repository,
+so changes made on this fork's egui are not reflected on the demo app.
+
 # egui demo app
 This app demonstrates [`egui`](https://github.com/emilk/egui/) and [`eframe`](https://github.com/emilk/egui/tree/main/crates/eframe).
 

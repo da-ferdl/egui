@@ -1,3 +1,6 @@
+#### Fork notice:
+The egui dependencies of egui_kittest on this fork are set to the egui upstream repository, so changes made on this fork's egui are currently not reflected on this egui_kittest.
+
 # egui_kittest
 
 [![Latest version](https://img.shields.io/crates/v/egui_kittest.svg)](https://crates.io/crates/egui_kittest)

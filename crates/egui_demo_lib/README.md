@@ -1,3 +1,7 @@
+#### Fork notice:
+The egui dependencies of this demo lib are set to the egui upstream repository,
+so changes made on this fork's egui are not reflected on the demo.
+
 # [`egui`](https://github.com/emilk/egui) demo library
 
 [![Latest version](https://img.shields.io/crates/v/egui_demo_lib.svg)](https://crates.io/crates/egui_demo_lib)

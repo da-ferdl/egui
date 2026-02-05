@@ -117,7 +117,7 @@ x11 = [
 __screenshot = []
 
 [dependencies]
-egui = { workspace = true, default-features = false, features = ["bytemuck"] }
+egui = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["bytemuck"] }
 
 ahash.workspace = true
 document-features.workspace = true
@@ -133,7 +133,7 @@ web-time.workspace = true
 
 # Optional dependencies
 
-egui_glow = { workspace = true, optional = true, default-features = false }
+egui_glow = { git = "https://github.com/emilk/egui", branch = "main", optional = true, default-features = false }
 glow = { workspace = true, optional = true }
 ron = { workspace = true, optional = true, features = ["integer128"] }
 serde = { workspace = true, optional = true }
@@ -141,12 +141,12 @@ serde = { workspace = true, optional = true }
 # -------------------------------------------
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-egui-winit = { workspace = true, default-features = false, features = ["clipboard", "links"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["clipboard", "links"] }
 image = { workspace = true, features = ["png"] } # Needed for app icon
 winit = { workspace = true, default-features = false, features = ["rwh_06"] }
 
 # optional native:
-egui-wgpu = { workspace = true, optional = true, features = [
+egui-wgpu = { git = "https://github.com/emilk/egui", branch = "main", optional = true, features = [
   "winit",
   "capture",
 ] } # if wgpu is used, use it with winit
@@ -254,7 +254,7 @@ web-sys = { workspace = true, features = [
 ] }
 
 # optional web:
-egui-wgpu = { workspace = true, optional = true, features = [
+egui-wgpu = { git = "https://github.com/emilk/egui", branch = "main", optional = true, features = [
   # if wgpu is used, use it without (!) winit:
   "capture",
 ] }

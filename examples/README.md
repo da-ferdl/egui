@@ -1,3 +1,6 @@
+#### Fork notice:
+The egui dependencies of the examples here are set to the egui upstream repository, so changes made on this fork's egui are not reflected on the examples.
+
 # `egui` and `eframe` examples
 All the examples in this folder uses [`eframe`](https://github.com/emilk/egui/tree/main/crates/eframe) to set up a window for [`egui`](https://github.com/emilk/egui/). Some examples are specific to `eframe`, but many are applicable to any `egui` integration.
 
