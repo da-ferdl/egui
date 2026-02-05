@@ -1,7 +1,7 @@
 use emath::GuiRounding as _;
 use epaint::text::TextFormat;
 use std::fmt::Formatter;
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, rc::Rc};
 
 use crate::{
     Align, Color32, FontFamily, FontSelection, Galley, Style, TextStyle, TextWrapMode, Ui, Visuals,
@@ -496,7 +496,7 @@ pub enum WidgetText {
     /// Text and optional style choices for it.
     ///
     /// Prefer [`Self::Text`] if there is no styling, as it will be faster.
-    RichText(Arc<RichText>),
+    RichText(Rc<RichText>),
 
     /// Use this [`LayoutJob`] when laying out the text.
     ///
@@ -510,13 +510,13 @@ pub enum WidgetText {
     ///
     /// You can color the text however you want, or use [`Color32::PLACEHOLDER`]
     /// which will be replaced with a color chosen by the widget that paints the text.
-    LayoutJob(Arc<LayoutJob>),
+    LayoutJob(Rc<LayoutJob>),
 
     /// Use exactly this galley when painting the text.
     ///
     /// You can color the text however you want, or use [`Color32::PLACEHOLDER`]
     /// which will be replaced with a color chosen by the widget that paints the text.
-    Galley(Arc<Galley>),
+    Galley(Rc<Galley>),
 }
 
 impl std::fmt::Debug for WidgetText {
@@ -569,8 +569,8 @@ impl WidgetText {
         F: FnOnce(RichText) -> RichText,
     {
         match self {
-            Self::Text(text) => Self::RichText(Arc::new(f(RichText::new(text)))),
-            Self::RichText(text) => Self::RichText(Arc::new(f(Arc::unwrap_or_clone(text)))),
+            Self::Text(text) => Self::RichText(Rc::new(f(RichText::new(text)))),
+            Self::RichText(text) => Self::RichText(Rc::new(f(Rc::unwrap_or_clone(text)))),
             other => other,
         }
     }
@@ -692,9 +692,9 @@ impl WidgetText {
         style: &Style,
         fallback_font: FontSelection,
         default_valign: Align,
-    ) -> Arc<LayoutJob> {
+    ) -> Rc<LayoutJob> {
         match self {
-            Self::Text(text) => Arc::new(LayoutJob::simple_format(
+            Self::Text(text) => Rc::new(LayoutJob::simple_format(
                 text,
                 TextFormat {
                     font_id: FontSelection::Default.resolve(style),
@@ -703,13 +703,13 @@ impl WidgetText {
                     ..Default::default()
                 },
             )),
-            Self::RichText(text) => Arc::new(Arc::unwrap_or_clone(text).into_layout_job(
+            Self::RichText(text) => Rc::new(Rc::unwrap_or_clone(text).into_layout_job(
                 style,
                 fallback_font,
                 default_valign,
             )),
             Self::LayoutJob(job) => job,
-            Self::Galley(galley) => Arc::clone(&galley.job),
+            Self::Galley(galley) => Rc::clone(&galley.job),
         }
     }
 
@@ -722,7 +722,7 @@ impl WidgetText {
         wrap_mode: Option<TextWrapMode>,
         available_width: f32,
         fallback_font: impl Into<FontSelection>,
-    ) -> Arc<Galley> {
+    ) -> Rc<Galley> {
         let valign = ui.text_valign();
         let style = ui.style();
 
@@ -739,7 +739,7 @@ impl WidgetText {
         text_wrapping: TextWrapping,
         fallback_font: FontSelection,
         default_valign: Align,
-    ) -> Arc<Galley> {
+    ) -> Rc<Galley> {
         match self {
             Self::Text(text) => {
                 let color = style
@@ -761,16 +761,13 @@ impl WidgetText {
                 ctx.fonts_mut(|f| f.layout_job(layout_job))
             }
             Self::RichText(text) => {
-                let mut layout_job = Arc::unwrap_or_clone(text).into_layout_job(
-                    style,
-                    fallback_font,
-                    default_valign,
-                );
+                let mut layout_job =
+                    Rc::unwrap_or_clone(text).into_layout_job(style, fallback_font, default_valign);
                 layout_job.wrap = text_wrapping;
                 ctx.fonts_mut(|f| f.layout_job(layout_job))
             }
             Self::LayoutJob(job) => {
-                let mut job = Arc::unwrap_or_clone(job);
+                let mut job = Rc::unwrap_or_clone(job);
                 job.wrap = text_wrapping;
                 ctx.fonts_mut(|f| f.layout_job(job))
             }
@@ -824,13 +821,13 @@ impl From<Cow<'_, str>> for WidgetText {
 impl From<RichText> for WidgetText {
     #[inline]
     fn from(rich_text: RichText) -> Self {
-        Self::RichText(Arc::new(rich_text))
+        Self::RichText(Rc::new(rich_text))
     }
 }
 
-impl From<Arc<RichText>> for WidgetText {
+impl From<Rc<RichText>> for WidgetText {
     #[inline]
-    fn from(rich_text: Arc<RichText>) -> Self {
+    fn from(rich_text: Rc<RichText>) -> Self {
         Self::RichText(rich_text)
     }
 }
@@ -838,20 +835,20 @@ impl From<Arc<RichText>> for WidgetText {
 impl From<LayoutJob> for WidgetText {
     #[inline]
     fn from(layout_job: LayoutJob) -> Self {
-        Self::LayoutJob(Arc::new(layout_job))
+        Self::LayoutJob(Rc::new(layout_job))
     }
 }
 
-impl From<Arc<LayoutJob>> for WidgetText {
+impl From<Rc<LayoutJob>> for WidgetText {
     #[inline]
-    fn from(layout_job: Arc<LayoutJob>) -> Self {
+    fn from(layout_job: Rc<LayoutJob>) -> Self {
         Self::LayoutJob(layout_job)
     }
 }
 
-impl From<Arc<Galley>> for WidgetText {
+impl From<Rc<Galley>> for WidgetText {
     #[inline]
-    fn from(galley: Arc<Galley>) -> Self {
+    fn from(galley: Rc<Galley>) -> Self {
         Self::Galley(galley)
     }
 }

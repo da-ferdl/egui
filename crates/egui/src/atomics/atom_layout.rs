@@ -8,7 +8,7 @@ use epaint::text::TextWrapMode;
 use epaint::{Color32, Galley};
 use smallvec::SmallVec;
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
+use std::rc::Rc;
 
 /// Intra-widget layout utility.
 ///
@@ -339,7 +339,7 @@ impl<'atom> AllocatedAtomLayout<'atom> {
         })
     }
 
-    pub fn iter_texts(&self) -> impl Iterator<Item = &Arc<Galley>> + use<'atom, '_> {
+    pub fn iter_texts(&self) -> impl Iterator<Item = &Rc<Galley>> + use<'atom, '_> {
         self.iter_kinds().filter_map(|kind| {
             if let SizedAtomKind::Text(text) = kind {
                 Some(text)
@@ -349,7 +349,7 @@ impl<'atom> AllocatedAtomLayout<'atom> {
         })
     }
 
-    pub fn iter_texts_mut(&mut self) -> impl Iterator<Item = &mut Arc<Galley>> + use<'atom, '_> {
+    pub fn iter_texts_mut(&mut self) -> impl Iterator<Item = &mut Rc<Galley>> + use<'atom, '_> {
         self.iter_kinds_mut().filter_map(|kind| {
             if let SizedAtomKind::Text(text) = kind {
                 Some(text)

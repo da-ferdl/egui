@@ -39,7 +39,7 @@ pub struct Memory {
     /// This is NOT meant to store any important data. Store that in your own structures!
     ///
     /// Each read clones the data, so keep your values cheap to clone.
-    /// If you want to store a lot of data, you should wrap it in `Arc<Mutex<…>>` so it is cheap to clone.
+    /// If you want to store a lot of data, you should wrap it in `Rc<RefCell<…>>` so it is cheap to clone.
     ///
     /// This will be saved between different program runs if you use the `persistence` feature.
     ///
@@ -187,11 +187,11 @@ impl FocusDirection {
 pub struct Options {
     /// The default style for new [`Ui`](crate::Ui):s in dark mode.
     #[cfg_attr(feature = "serde", serde(skip))]
-    pub dark_style: std::sync::Arc<Style>,
+    pub dark_style: std::rc::Rc<Style>,
 
     /// The default style for new [`Ui`](crate::Ui):s in light mode.
     #[cfg_attr(feature = "serde", serde(skip))]
-    pub light_style: std::sync::Arc<Style>,
+    pub light_style: std::rc::Rc<Style>,
 
     /// Preference for selection between dark and light [`crate::Context::style`]
     /// as the active style used by all subsequent windows, panels, etc.
@@ -297,8 +297,8 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
-            dark_style: std::sync::Arc::new(Theme::Dark.default_style()),
-            light_style: std::sync::Arc::new(Theme::Light.default_style()),
+            dark_style: std::rc::Rc::new(Theme::Dark.default_style()),
+            light_style: std::rc::Rc::new(Theme::Light.default_style()),
             theme_preference: Default::default(),
             fallback_theme: Theme::Dark,
             system_theme: None,
@@ -335,14 +335,14 @@ impl Options {
         }
     }
 
-    pub(crate) fn style(&self) -> &std::sync::Arc<Style> {
+    pub(crate) fn style(&self) -> &std::rc::Rc<Style> {
         match self.theme() {
             Theme::Dark => &self.dark_style,
             Theme::Light => &self.light_style,
         }
     }
 
-    pub(crate) fn style_mut(&mut self) -> &mut std::sync::Arc<Style> {
+    pub(crate) fn style_mut(&mut self) -> &mut std::rc::Rc<Style> {
         match self.theme() {
             Theme::Dark => &mut self.dark_style,
             Theme::Light => &mut self.light_style,
@@ -408,7 +408,7 @@ impl Options {
             .show(ui, |ui| {
                 theme_preference.radio_buttons(ui);
 
-                let style = std::sync::Arc::make_mut(match theme {
+                let style = std::rc::Rc::make_mut(match theme {
                     Theme::Dark => dark_style,
                     Theme::Light => light_style,
                 });
@@ -1344,12 +1344,6 @@ impl Areas {
 }
 
 // ----------------------------------------------------------------------------
-
-#[test]
-fn memory_impl_send_sync() {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<Memory>();
-}
 
 #[test]
 fn order_map_total_ordering() {

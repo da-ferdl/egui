@@ -57,17 +57,17 @@ mod texture_loader;
 
 use std::{
     borrow::Cow,
+    cell::RefCell,
     fmt::{Debug, Display},
     ops::Deref,
-    sync::Arc,
+    rc::Rc,
 };
 
 use ahash::HashMap;
 
-use emath::{Float as _, OrderedFloat};
-use epaint::{ColorImage, TextureHandle, TextureId, Vec2, mutex::Mutex, textures::TextureOptions};
-
 use crate::Context;
+use emath::{Float as _, OrderedFloat};
+use epaint::{ColorImage, TextureHandle, TextureId, Vec2, textures::TextureOptions};
 
 pub use self::{bytes_loader::DefaultBytesLoader, texture_loader::DefaultTextureLoader};
 
@@ -201,11 +201,11 @@ impl Default for SizeHint {
 
 /// Represents a byte buffer.
 ///
-/// This is essentially `Cow<'static, [u8]>` but with the `Owned` variant being an `Arc`.
+/// This is essentially `Cow<'static, [u8]>` but with the `Owned` variant being an `Box`.
 #[derive(Clone)]
 pub enum Bytes {
     Static(&'static [u8]),
-    Shared(Arc<[u8]>),
+    Shared(Box<[u8]>),
 }
 
 impl Debug for Bytes {
@@ -228,13 +228,6 @@ impl<const N: usize> From<&'static [u8; N]> for Bytes {
     #[inline]
     fn from(value: &'static [u8; N]) -> Self {
         Self::Static(value)
-    }
-}
-
-impl From<Arc<[u8]>> for Bytes {
-    #[inline]
-    fn from(value: Arc<[u8]>) -> Self {
-        Self::Shared(value)
     }
 }
 
@@ -379,7 +372,7 @@ pub enum ImagePoll {
     },
 
     /// Image is loaded.
-    Ready { image: Arc<ColorImage> },
+    Ready { image: ColorImage },
 }
 
 pub type ImageLoadResult = Result<ImagePoll>;
@@ -592,27 +585,28 @@ pub trait TextureLoader {
     fn byte_size(&self) -> usize;
 }
 
-type BytesLoaderImpl = Arc<dyn BytesLoader + Send + Sync + 'static>;
-type ImageLoaderImpl = Arc<dyn ImageLoader + Send + Sync + 'static>;
-type TextureLoaderImpl = Arc<dyn TextureLoader + Send + Sync + 'static>;
+type BytesLoaderImpl = Rc<dyn BytesLoader + 'static>;
+type ImageLoaderImpl = Rc<dyn ImageLoader + 'static>;
+type TextureLoaderImpl = Rc<dyn TextureLoader + 'static>;
 
 #[derive(Clone)]
 /// The loaders of bytes, images, and textures.
 pub struct Loaders {
-    pub include: Arc<DefaultBytesLoader>,
-    pub bytes: Mutex<Vec<BytesLoaderImpl>>,
-    pub image: Mutex<Vec<ImageLoaderImpl>>,
-    pub texture: Mutex<Vec<TextureLoaderImpl>>,
+    pub include: Rc<DefaultBytesLoader>,
+    pub bytes: RefCell<Vec<BytesLoaderImpl>>,
+    pub image: RefCell<Vec<ImageLoaderImpl>>,
+    pub texture: RefCell<Vec<TextureLoaderImpl>>,
 }
 
 impl Default for Loaders {
     fn default() -> Self {
-        let include = Arc::new(DefaultBytesLoader::default());
+        let include = Rc::new(DefaultBytesLoader::default());
+
         Self {
-            bytes: Mutex::new(vec![Arc::clone(&include) as _]),
-            image: Mutex::new(Vec::new()),
+            bytes: RefCell::new(vec![include.clone()]),
+            image: RefCell::new(Vec::new()),
             // By default we only include `DefaultTextureLoader`.
-            texture: Mutex::new(vec![Arc::new(DefaultTextureLoader::default())]),
+            texture: RefCell::new(vec![Rc::new(DefaultTextureLoader::default())]),
             include,
         }
     }
@@ -629,13 +623,13 @@ impl Loaders {
         } = self;
 
         include.end_pass(pass_index);
-        for loader in bytes.lock().iter() {
+        for loader in bytes.borrow().iter() {
             loader.end_pass(pass_index);
         }
-        for loader in image.lock().iter() {
+        for loader in image.borrow().iter() {
             loader.end_pass(pass_index);
         }
-        for loader in texture.lock().iter() {
+        for loader in texture.borrow().iter() {
             loader.end_pass(pass_index);
         }
     }

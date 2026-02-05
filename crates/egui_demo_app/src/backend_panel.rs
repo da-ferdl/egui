@@ -159,10 +159,21 @@ impl BackendPanel {
                         .clicked()
                     {
                         log::info!("Waiting 2s before requesting repaint…");
-                        let ctx = ui.ctx().clone();
+
+                        let repaint_request_proxy = ui.ctx().get_repaint_request_proxy();
+                        let viewport_id = ui.viewport_id();
+
                         call_after_delay(std::time::Duration::from_secs(2), move || {
                             log::info!("Request a repaint in 3s…");
-                            ctx.request_repaint_after(std::time::Duration::from_secs(3));
+
+                            match &repaint_request_proxy {
+                                Some(proxy) => proxy.request_repaint_after(viewport_id, std::time::Duration::from_secs(3)),
+                                None => {
+                                    log::warn!(
+                                        "Cannot send a repaint request because no repaint proxy is available"
+                                    );
+                                }
+                            };
                         });
                     }
 

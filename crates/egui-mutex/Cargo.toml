@@ -1,0 +1,28 @@
+[package]
+name = "egui-mutex"
+version.workspace = true
+authors = ["Fernando Lopes <fernando@lopes.one>"]
+description = "Simple Mutex for internal egui usage"
+edition.workspace = true
+rust-version.workspace = true
+homepage = "https://github.com/emilk/egui"
+license.workspace = true
+readme = "./README.md"
+repository = "https://github.com/emilk/egui"
+categories = ["graphics", "gui"]
+keywords = ["graphics", "gui", "egui"]
+include = ["../LICENSE-APACHE", "../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--generate-link-to-definition"]
+
+[lib]
+
+[target.'cfg(not(any(target_os = "macos", target_os = "ios")))'.dependencies]
+atomic-wait = "1.1.0"
+
+[dev-dependencies]
+atomic-wait = "1.1.0"

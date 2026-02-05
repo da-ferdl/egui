@@ -60,11 +60,12 @@ _override_unity = []
 [dependencies]
 emath.workspace = true
 ecolor.workspace = true
-
+egui-mutex.workspace = true
 ahash.workspace = true
 log.workspace = true
 nohash-hasher.workspace = true
-parking_lot.workspace = true # Using parking_lot over std::sync::Mutex gives 50% speedups in some real-world scenarios.
+# Disabled because epaint::mutex is currently not used (replaced by egui-mutex)
+#parking_lot.workspace = true # Using parking_lot over std::sync::Mutex gives 50% speedups in some real-world scenarios.
 profiling.workspace = true
 self_cell.workspace = true
 skrifa.workspace = true

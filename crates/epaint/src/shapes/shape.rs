@@ -1,18 +1,16 @@
 //! The different shapes that can be painted.
 
-use std::sync::Arc;
-
 use emath::{Align2, Pos2, Rangef, Rect, TSTransform, Vec2, pos2};
-
-use crate::{
-    Color32, CornerRadius, Mesh, Stroke, StrokeKind, TextureId,
-    stroke::PathStroke,
-    text::{FontId, FontsView, Galley},
-};
+use std::rc::Rc;
 
 use super::{
     CircleShape, CubicBezierShape, EllipseShape, PaintCallback, PathShape, QuadraticBezierShape,
     RectShape, TextShape,
+};
+use crate::{
+    Color32, CornerRadius, Mesh, Stroke, StrokeKind, TextureId,
+    stroke::PathStroke,
+    text::{FontId, FontsView, Galley},
 };
 
 /// A paint primitive such as a circle or a piece of text.
@@ -58,7 +56,7 @@ pub enum Shape {
     /// Can be used to display images.
     ///
     /// Wrapped in an [`Arc`] to minimize the size of [`Shape`].
-    Mesh(Arc<Mesh>),
+    Mesh(Rc<Mesh>),
 
     /// A quadratic [Bézier Curve](https://en.wikipedia.org/wiki/B%C3%A9zier_curve).
     QuadraticBezier(QuadraticBezierShape),
@@ -83,12 +81,6 @@ fn shape_size() {
     );
 }
 
-#[test]
-fn shape_impl_send_sync() {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<Shape>();
-}
-
 impl From<Vec<Self>> for Shape {
     #[inline(always)]
     fn from(shapes: Vec<Self>) -> Self {
@@ -103,9 +95,9 @@ impl From<Mesh> for Shape {
     }
 }
 
-impl From<Arc<Mesh>> for Shape {
+impl From<Rc<Mesh>> for Shape {
     #[inline(always)]
-    fn from(mesh: Arc<Mesh>) -> Self {
+    fn from(mesh: Rc<Mesh>) -> Self {
         Self::Mesh(mesh)
     }
 }
@@ -315,7 +307,7 @@ impl Shape {
     ///
     /// Any non-placeholder color in the galley takes precedence over this fallback color.
     #[inline]
-    pub fn galley(pos: Pos2, galley: Arc<Galley>, fallback_color: Color32) -> Self {
+    pub fn galley(pos: Pos2, galley: Rc<Galley>, fallback_color: Color32) -> Self {
         TextShape::new(pos, galley, fallback_color).into()
     }
 
@@ -323,7 +315,7 @@ impl Shape {
     #[inline]
     pub fn galley_with_override_text_color(
         pos: Pos2,
-        galley: Arc<Galley>,
+        galley: Rc<Galley>,
         text_color: Color32,
     ) -> Self {
         TextShape::new(pos, galley, text_color)
@@ -333,12 +325,12 @@ impl Shape {
 
     #[inline]
     #[deprecated = "Use `Shape::galley` or `Shape::galley_with_override_text_color` instead"]
-    pub fn galley_with_color(pos: Pos2, galley: Arc<Galley>, text_color: Color32) -> Self {
+    pub fn galley_with_color(pos: Pos2, galley: Rc<Galley>, text_color: Color32) -> Self {
         Self::galley_with_override_text_color(pos, galley, text_color)
     }
 
     #[inline]
-    pub fn mesh(mesh: impl Into<Arc<Mesh>>) -> Self {
+    pub fn mesh(mesh: impl Into<Rc<Mesh>>) -> Self {
         let mesh = mesh.into();
         debug_assert!(mesh.is_valid(), "Invalid mesh: {mesh:#?}");
         Self::Mesh(mesh)
@@ -460,7 +452,7 @@ impl Shape {
                 text_shape.transform(transform);
             }
             Self::Mesh(mesh) => {
-                Arc::make_mut(mesh).transform(transform);
+                Rc::make_mut(mesh).transform(transform);
             }
             Self::QuadraticBezier(bezier) => {
                 for p in &mut bezier.points {

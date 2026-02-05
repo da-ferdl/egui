@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc};
+use std::{any::Any, rc::Rc};
 
 use crate::{Context, CursorIcon, Plugin, Ui};
 
@@ -21,7 +21,7 @@ use crate::{Context, CursorIcon, Plugin, Ui};
 #[derive(Clone, Default)]
 pub struct DragAndDrop {
     /// The current drag-and-drop payload, if any. Automatically cleared when drag ends.
-    payload: Option<Arc<dyn Any + Send + Sync>>,
+    payload: Option<Rc<dyn Any>>,
 }
 
 impl Plugin for DragAndDrop {
@@ -77,9 +77,9 @@ impl DragAndDrop {
     /// This can be read by [`Self::payload`] until the pointer is released.
     pub fn set_payload<Payload>(ctx: &Context, payload: Payload)
     where
-        Payload: Any + Send + Sync,
+        Payload: Any,
     {
-        ctx.plugin::<Self>().lock().payload = Some(Arc::new(payload));
+        ctx.plugin::<Self>().lock().payload = Some(Rc::new(payload));
     }
 
     /// Clears the payload, setting it to `None`.
@@ -93,11 +93,11 @@ impl DragAndDrop {
     ///
     /// Returns `Some` both during a drag and on the frame the pointer is released
     /// (if there is a payload).
-    pub fn payload<Payload>(ctx: &Context) -> Option<Arc<Payload>>
+    pub fn payload<Payload>(ctx: &Context) -> Option<Rc<Payload>>
     where
-        Payload: Any + Send + Sync,
+        Payload: Any,
     {
-        Arc::clone(ctx.plugin::<Self>().lock().payload.as_ref()?)
+        Rc::clone(ctx.plugin::<Self>().lock().payload.as_ref()?)
             .downcast()
             .ok()
     }
@@ -108,9 +108,9 @@ impl DragAndDrop {
     ///
     /// Returns `Some` both during a drag and on the frame the pointer is released
     /// (if there is a payload).
-    pub fn take_payload<Payload>(ctx: &Context) -> Option<Arc<Payload>>
+    pub fn take_payload<Payload>(ctx: &Context) -> Option<Rc<Payload>>
     where
-        Payload: Any + Send + Sync,
+        Payload: Any,
     {
         ctx.plugin::<Self>().lock().payload.take()?.downcast().ok()
     }
@@ -121,7 +121,7 @@ impl DragAndDrop {
     /// (if there is a payload).
     pub fn has_payload_of_type<Payload>(ctx: &Context) -> bool
     where
-        Payload: Any + Send + Sync,
+        Payload: Any,
     {
         Self::payload::<Payload>(ctx).is_some()
     }

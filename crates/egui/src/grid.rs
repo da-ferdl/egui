@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use emath::GuiRounding as _;
+use std::rc::Rc;
 
 use crate::{
     Align2, Color32, Context, Id, InnerResponse, NumExt as _, Painter, Rect, Region, Style, Ui,
@@ -57,11 +56,11 @@ impl State {
 // ----------------------------------------------------------------------------
 
 // type alias for boxed function to determine row color during grid generation
-type ColorPickerFn = Box<dyn Send + Sync + Fn(usize, &Style) -> Option<Color32>>;
+type ColorPickerFn = Box<dyn Fn(usize, &Style) -> Option<Color32>>;
 
 pub(crate) struct GridLayout {
     ctx: Context,
-    style: std::sync::Arc<Style>,
+    style: Rc<Style>,
     id: Id,
 
     /// First frame (no previous know state).
@@ -104,7 +103,7 @@ impl GridLayout {
 
         Self {
             ctx: ui.ctx().clone(),
-            style: Arc::clone(ui.style()),
+            style: Rc::clone(ui.style()),
             id,
             is_first_frame,
             prev_state,
@@ -341,7 +340,7 @@ impl Grid {
     #[inline]
     pub fn with_row_color<F>(mut self, color_picker: F) -> Self
     where
-        F: Send + Sync + Fn(usize, &Style) -> Option<Color32> + 'static,
+        F: Fn(usize, &Style) -> Option<Color32> + 'static,
     {
         self.color_picker = Some(Box::new(color_picker));
         self

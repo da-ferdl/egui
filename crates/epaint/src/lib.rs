@@ -31,7 +31,10 @@ pub mod image;
 mod margin;
 mod margin_f32;
 mod mesh;
-pub mod mutex;
+// Not used anymore - replaced with egui-mutex.
+// -> just disable, don't delete so changes are still tracked
+// and maybe it will be used again in the future.
+//pub mod mutex;
 mod shadow;
 pub mod shape_transform;
 mod shapes;

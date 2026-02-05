@@ -1,10 +1,10 @@
 use egui::{Image, UserData, ViewportCommand, Widget as _};
-use std::sync::Arc;
+use std::rc::Rc;
 
 /// Showcase [`ViewportCommand::Screenshot`].
 #[derive(PartialEq, Eq, Default)]
 pub struct Screenshot {
-    image: Option<(Arc<egui::ColorImage>, egui::TextureHandle)>,
+    image: Option<(Rc<egui::ColorImage>, egui::TextureHandle)>,
     continuous: bool,
 }
 
@@ -53,7 +53,7 @@ impl crate::View for Screenshot {
                 .iter()
                 .filter_map(|e| {
                     if let egui::Event::Screenshot { image, .. } = e {
-                        Some(Arc::clone(image))
+                        Some(Rc::new(image.clone()))
                     } else {
                         None
                     }
@@ -63,7 +63,7 @@ impl crate::View for Screenshot {
 
         if let Some(image) = image {
             self.image = Some((
-                Arc::clone(&image),
+                Rc::clone(&image),
                 ui.ctx()
                     .load_texture("screenshot_demo", image, Default::default()),
             ));

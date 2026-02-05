@@ -1,13 +1,11 @@
 use ahash::HashMap;
-use egui::{
-    load::{Bytes, BytesLoadResult, BytesLoader, BytesPoll, LoadError},
-    mutex::Mutex,
-};
+use egui::load::{Bytes, BytesLoadResult, BytesLoader, BytesPoll, LoadError};
+use egui_mutex::SMutex;
 use std::{sync::Arc, task::Poll};
 
 #[derive(Clone)]
 struct File {
-    bytes: Arc<[u8]>,
+    bytes: Box<[u8]>,
     mime: Option<String>,
 }
 
@@ -41,7 +39,7 @@ type Entry = Poll<Result<File, String>>;
 
 #[derive(Default)]
 pub struct EhttpLoader {
-    cache: Arc<Mutex<HashMap<String, Entry>>>,
+    cache: Arc<SMutex<HashMap<String, Entry>>>,
 }
 
 impl EhttpLoader {
@@ -82,8 +80,10 @@ impl BytesLoader for EhttpLoader {
             cache.insert(uri.clone(), Poll::Pending);
             drop(cache);
 
+            let repaint_request_proxy = ctx.get_repaint_request_proxy();
+            let viewport_id = ctx.viewport_id();
+
             ehttp::fetch(ehttp::Request::get(uri.clone()), {
-                let ctx = ctx.clone();
                 let cache = Arc::clone(&self.cache);
                 move |response| {
                     let result = match response {
@@ -113,7 +113,14 @@ impl BytesLoader for EhttpLoader {
                     // We may not lock Context while the cache lock is held (see ImageLoader::load
                     // for details).
                     if repaint {
-                        ctx.request_repaint();
+                        match &repaint_request_proxy {
+                            Some(proxy) => proxy.request_repaint(viewport_id),
+                            None => {
+                                log::warn!(
+                                    "Cannot send a repaint request because no repaint proxy is available"
+                                );
+                            }
+                        };
                     }
                 }
             });

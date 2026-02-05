@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{
     CircleShape, Color32, ColorMode, CubicBezierShape, EllipseShape, Mesh, PathShape,
@@ -88,9 +88,9 @@ pub fn adjust_colors(
             }
 
             if !galley.is_empty() {
-                let galley = Arc::make_mut(galley);
+                let galley = Rc::make_mut(galley);
                 for placed_row in &mut galley.rows {
-                    let row = Arc::make_mut(&mut placed_row.row);
+                    let row = Rc::make_mut(&mut placed_row.row);
                     for vertex in &mut row.visuals.mesh.vertices {
                         adjust_color(&mut vertex.color);
                     }
@@ -103,7 +103,7 @@ pub fn adjust_colors(
                 indices: _,
                 vertices,
                 texture_id: _,
-            } = Arc::make_mut(mesh);
+            } = Rc::make_mut(mesh);
 
             for v in vertices {
                 adjust_color(&mut v.color);
@@ -123,12 +123,12 @@ fn adjust_color_mode(
     match color_mode {
         color::ColorMode::Solid(color) => adjust_color(color),
         color::ColorMode::UV(callback) => {
-            let callback = Arc::clone(callback);
-            *color_mode = color::ColorMode::UV(Arc::new(Box::new(move |rect, pos| {
+            let callback = Rc::clone(callback);
+            *color_mode = color::ColorMode::UV(Rc::new(move |rect, pos| {
                 let mut color = callback(rect, pos);
                 adjust_color(&mut color);
                 color
-            })));
+            }));
         }
     }
 }

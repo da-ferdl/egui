@@ -1,7 +1,7 @@
 use emath::Vec2;
 
 use crate::{Color32, textures::TextureOptions};
-use std::sync::Arc;
+use std::rc::Rc;
 
 /// An image stored in RAM.
 ///
@@ -14,7 +14,7 @@ use std::sync::Arc;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ImageData {
     /// RGBA image.
-    Color(Arc<ColorImage>),
+    Color(Rc<ColorImage>),
 }
 
 impl ImageData {
@@ -323,13 +323,13 @@ impl std::ops::IndexMut<(usize, usize)> for ColorImage {
 impl From<ColorImage> for ImageData {
     #[inline(always)]
     fn from(image: ColorImage) -> Self {
-        Self::Color(Arc::new(image))
+        Self::Color(Rc::new(image))
     }
 }
 
-impl From<Arc<ColorImage>> for ImageData {
+impl From<Rc<ColorImage>> for ImageData {
     #[inline]
-    fn from(image: Arc<ColorImage>) -> Self {
+    fn from(image: Rc<ColorImage>) -> Self {
         Self::Color(image)
     }
 }

@@ -2,7 +2,7 @@
 
 use emath::Align;
 use epaint::{AlphaFromCoverage, CornerRadius, Shadow, Stroke, TextOptions, text::FontTweak};
-use std::{collections::BTreeMap, ops::RangeInclusive, sync::Arc};
+use std::{collections::BTreeMap, ops::RangeInclusive, rc::Rc};
 
 use crate::{
     ComboBox, CursorIcon, FontFamily, FontId, Grid, Margin, Response, RichText, TextWrapMode,
@@ -15,7 +15,7 @@ use crate::{
 /// How to format numbers in e.g. a [`crate::DragValue`].
 #[derive(Clone)]
 pub struct NumberFormatter(
-    Arc<dyn 'static + Sync + Send + Fn(f64, RangeInclusive<usize>) -> String>,
+    Rc<dyn 'static + Sync + Send + Fn(f64, RangeInclusive<usize>) -> String>,
 );
 
 impl NumberFormatter {
@@ -27,7 +27,7 @@ impl NumberFormatter {
     pub fn new(
         formatter: impl 'static + Sync + Send + Fn(f64, RangeInclusive<usize>) -> String,
     ) -> Self {
-        Self(Arc::new(formatter))
+        Self(Rc::new(formatter))
     }
 
     /// Format the given number with the given number of decimals.
@@ -53,7 +53,7 @@ impl std::fmt::Debug for NumberFormatter {
 impl PartialEq for NumberFormatter {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
+        Rc::ptr_eq(&self.0, &other.0)
     }
 }
 
@@ -187,7 +187,7 @@ impl From<TextStyle> for FontSelection {
 /// Utility to modify a [`Style`] in some way.
 /// Constructed via [`StyleModifier::from`] from a `Fn(&mut Style)` or a [`Style`].
 #[derive(Clone, Default)]
-pub struct StyleModifier(Option<Arc<dyn Fn(&mut Style) + Send + Sync>>);
+pub struct StyleModifier(Option<Rc<dyn Fn(&mut Style)>>);
 
 impl std::fmt::Debug for StyleModifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -197,22 +197,22 @@ impl std::fmt::Debug for StyleModifier {
 
 impl<T> From<T> for StyleModifier
 where
-    T: Fn(&mut Style) + Send + Sync + 'static,
+    T: Fn(&mut Style) + 'static,
 {
     fn from(f: T) -> Self {
-        Self(Some(Arc::new(f)))
+        Self(Some(Rc::new(f)))
     }
 }
 
 impl From<Style> for StyleModifier {
     fn from(style: Style) -> Self {
-        Self(Some(Arc::new(move |s| *s = style.clone())))
+        Self(Some(Rc::new(move |s| *s = style.clone())))
     }
 }
 
 impl StyleModifier {
     /// Create a new [`StyleModifier`] from a function.
-    pub fn new(f: impl Fn(&mut Style) + Send + Sync + 'static) -> Self {
+    pub fn new(f: impl Fn(&mut Style) + 'static) -> Self {
         Self::from(f)
     }
 
@@ -346,12 +346,6 @@ pub struct Style {
 
     /// Use a more compact style for menus.
     pub compact_menu_style: bool,
-}
-
-#[test]
-fn style_impl_send_sync() {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<Style>();
 }
 
 impl Style {
@@ -1356,7 +1350,7 @@ impl Default for Style {
             override_text_valign: Some(Align::Center),
             text_styles: default_text_styles(),
             drag_value_text_style: TextStyle::Button,
-            number_formatter: NumberFormatter(Arc::new(emath::format_with_decimals_in_range)),
+            number_formatter: NumberFormatter(Rc::new(emath::format_with_decimals_in_range)),
             wrap: None,
             wrap_mode: None,
             spacing: Spacing::default(),

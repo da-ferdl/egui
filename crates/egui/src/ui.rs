@@ -1,10 +1,9 @@
 #![warn(missing_docs)] // Let's keep `Ui` well-documented.
 #![expect(clippy::use_self)]
 
-use std::{any::Any, hash::Hash, ops::Deref, sync::Arc};
+use std::{any::Any, cell::RefCell, hash::Hash, ops::Deref, rc::Rc};
 
 use emath::GuiRounding as _;
-use epaint::mutex::RwLock;
 
 use crate::containers::menu;
 use crate::{containers::*, ecolor::*, layout::*, placer::Placer, widgets::*, *};
@@ -62,7 +61,7 @@ pub struct Ui {
     /// The [`Style`] (visuals, spacing, etc) of this ui.
     /// Commonly many [`Ui`]s share the same [`Style`].
     /// The [`Ui`] implements copy-on-write for this.
-    style: Arc<Style>,
+    style: Rc<Style>,
 
     /// Handles the [`Ui`] size and the placement of new widgets.
     placer: Placer,
@@ -77,10 +76,10 @@ pub struct Ui {
 
     /// Indicates whether this Ui belongs to a Menu.
     #[expect(deprecated)]
-    menu_state: Option<Arc<RwLock<crate::menu::MenuState>>>,
+    menu_state: Option<Rc<RefCell<crate::menu::MenuState>>>,
 
     /// The [`UiStack`] for this [`Ui`].
-    stack: Arc<UiStack>,
+    stack: Rc<UiStack>,
 
     /// The sense for the ui background.
     sense: Sense,
@@ -158,7 +157,7 @@ impl Ui {
             enabled: true,
             sizing_pass,
             menu_state: None,
-            stack: Arc::new(ui_stack),
+            stack: Rc::new(ui_stack),
             sense,
             min_rect_already_remembered: false,
         };
@@ -276,7 +275,7 @@ impl Ui {
             painter.set_invisible();
         }
         let sizing_pass = self.sizing_pass || sizing_pass;
-        let style = style.unwrap_or_else(|| Arc::clone(&self.style));
+        let style = style.unwrap_or_else(|| Rc::clone(&self.style));
         let sense = sense.unwrap_or_else(Sense::hover);
 
         if sizing_pass {
@@ -306,7 +305,7 @@ impl Ui {
             id: unique_id,
             layout_direction: layout.main_dir,
             info: ui_stack_info,
-            parent: Some(Arc::clone(&self.stack)),
+            parent: Some(Rc::clone(&self.stack)),
             min_rect: placer.min_rect(),
             max_rect: placer.max_rect(),
         };
@@ -320,7 +319,7 @@ impl Ui {
             enabled,
             sizing_pass,
             menu_state: self.menu_state.clone(),
-            stack: Arc::new(ui_stack),
+            stack: Rc::new(ui_stack),
             sense,
             min_rect_already_remembered: false,
         };
@@ -412,7 +411,7 @@ impl Ui {
     ///
     /// Note that this may be a different [`Style`] than that of [`Context::style`].
     #[inline]
-    pub fn style(&self) -> &Arc<Style> {
+    pub fn style(&self) -> &Rc<Style> {
         &self.style
     }
 
@@ -428,13 +427,13 @@ impl Ui {
     /// # });
     /// ```
     pub fn style_mut(&mut self) -> &mut Style {
-        Arc::make_mut(&mut self.style) // clone-on-write
+        Rc::make_mut(&mut self.style) // clone-on-write
     }
 
     /// Changes apply to this [`Ui`] and its subsequent children.
     ///
     /// To set the style of all [`Ui`]s, use [`Context::set_style_of`].
-    pub fn set_style(&mut self, style: impl Into<Arc<Style>>) {
+    pub fn set_style(&mut self, style: impl Into<Rc<Style>>) {
         self.style = style.into();
     }
 
@@ -487,7 +486,7 @@ impl Ui {
 
     /// Get a reference to this [`Ui`]'s [`UiStack`].
     #[inline]
-    pub fn stack(&self) -> &Arc<UiStack> {
+    pub fn stack(&self) -> &Rc<UiStack> {
         &self.stack
     }
 
@@ -2878,7 +2877,7 @@ impl Ui {
         add_contents: impl FnOnce(&mut Self) -> R,
     ) -> InnerResponse<R>
     where
-        Payload: Any + Send + Sync,
+        Payload: Any,
     {
         let is_being_dragged = self.ctx().is_being_dragged(id);
 
@@ -2927,9 +2926,9 @@ impl Ui {
         &mut self,
         frame: Frame,
         add_contents: impl FnOnce(&mut Ui) -> R,
-    ) -> (InnerResponse<R>, Option<Arc<Payload>>)
+    ) -> (InnerResponse<R>, Option<Rc<Payload>>)
     where
-        Payload: Any + Send + Sync,
+        Payload: Any,
     {
         let is_anything_being_dragged = DragAndDrop::has_any_payload(self.ctx());
         let can_accept_what_is_being_dragged =
@@ -3010,7 +3009,7 @@ impl Ui {
     #[expect(deprecated)]
     pub(crate) fn set_menu_state(
         &mut self,
-        menu_state: Option<Arc<RwLock<crate::menu::MenuState>>>,
+        menu_state: Option<Rc<RefCell<crate::menu::MenuState>>>,
     ) {
         self.menu_state = menu_state;
     }
@@ -3231,9 +3230,3 @@ fn register_rect(ui: &Ui, rect: Rect) {
 
 #[cfg(not(debug_assertions))]
 fn register_rect(_ui: &Ui, _rect: Rect) {}
-
-#[test]
-fn ui_impl_send_sync() {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<Ui>();
-}

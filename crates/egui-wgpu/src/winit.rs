@@ -445,7 +445,7 @@ impl Painter {
         };
 
         let user_cmd_bufs = {
-            let mut renderer = render_state.renderer.write();
+            let mut renderer = render_state.renderer.lock();
             for (id, image_delta) in &textures_delta.set {
                 renderer.update_texture(
                     &render_state.device,
@@ -488,7 +488,7 @@ impl Painter {
 
         let mut capture_buffer = None;
         {
-            let renderer = render_state.renderer.read();
+            let renderer = render_state.renderer.lock();
 
             let target_texture = if capture {
                 let capture_state = self.screen_capture_state.get_or_insert_with(|| {
@@ -594,7 +594,7 @@ impl Painter {
         // Calling `wgpu::Texture::destroy` on a texture that is still in use would invalidate the command buffer(s) it is used in.
         // However, once we called `wgpu::Queue::submit`, it is up for wgpu to determine how long the underlying gpu resource has to live.
         {
-            let mut renderer = render_state.renderer.write();
+            let mut renderer = render_state.renderer.lock();
             for id in &textures_delta.free {
                 renderer.free_texture(id);
             }
@@ -626,12 +626,11 @@ impl Painter {
     /// Call this at the beginning of each frame to receive the requested screenshots.
     pub fn handle_screenshots(&self, events: &mut Vec<Event>) {
         for (viewport_id, user_data, screenshot) in self.capture_rx.try_iter() {
-            let screenshot = Arc::new(screenshot);
             for data in user_data {
                 events.push(Event::Screenshot {
                     viewport_id,
                     user_data: data,
-                    image: Arc::clone(&screenshot),
+                    image: screenshot.clone(),
                 });
             }
         }

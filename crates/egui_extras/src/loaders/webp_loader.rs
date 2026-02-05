@@ -2,14 +2,14 @@ use ahash::HashMap;
 use egui::{
     ColorImage, FrameDurations, Id, decode_animated_image_uri, has_webp_header,
     load::{BytesPoll, ImageLoadResult, ImageLoader, ImagePoll, LoadError, SizeHint},
-    mutex::Mutex,
 };
+use egui_mutex::SMutex;
 use image::{AnimationDecoder as _, ColorType, ImageDecoder as _, Rgba, codecs::webp::WebPDecoder};
-use std::{io::Cursor, mem::size_of, sync::Arc, time::Duration};
+use std::{io::Cursor, mem::size_of, time::Duration};
 
 #[derive(Clone)]
 enum WebP {
-    Static(Arc<ColorImage>),
+    Static(ColorImage),
     Animated(AnimatedImage),
 }
 
@@ -34,10 +34,10 @@ impl WebP {
                 let image = frame.buffer();
                 let pixels = image.as_flat_samples();
 
-                images.push(Arc::new(ColorImage::from_rgba_unmultiplied(
+                images.push(ColorImage::from_rgba_unmultiplied(
                     [image.width() as usize, image.height() as usize],
                     pixels.as_slice(),
-                )));
+                ));
 
                 let delay: Duration = frame.delay().into();
                 durations.push(delay);
@@ -66,16 +66,16 @@ impl WebP {
                 .read_image(&mut data)
                 .map_err(|error| format!("WebP image read failure ({error})"))?;
 
-            Ok(Self::Static(Arc::new(create_image(
+            Ok(Self::Static(create_image(
                 [width as usize, height as usize],
                 &data,
-            ))))
+            )))
         }
     }
 
-    fn get_image(&self, frame_index: usize) -> Arc<ColorImage> {
+    fn get_image(&self, frame_index: usize) -> ColorImage {
         match self {
-            Self::Static(image) => Arc::clone(image),
+            Self::Static(image) => image.clone(),
             Self::Animated(animation) => animation.get_image_by_index(frame_index),
         }
     }
@@ -91,7 +91,7 @@ impl WebP {
 
 #[derive(Debug, Clone)]
 pub struct AnimatedImage {
-    frames: Vec<Arc<ColorImage>>,
+    frames: Vec<ColorImage>,
     frame_durations: FrameDurations,
 }
 
@@ -107,8 +107,8 @@ impl AnimatedImage {
                 .sum::<usize>()
     }
 
-    pub fn get_image_by_index(&self, index: usize) -> Arc<ColorImage> {
-        Arc::clone(&self.frames[index % self.frames.len()])
+    pub fn get_image_by_index(&self, index: usize) -> ColorImage {
+        self.frames[index % self.frames.len()].clone()
     }
 }
 
@@ -116,7 +116,7 @@ type Entry = Result<WebP, String>;
 
 #[derive(Default)]
 pub struct WebPLoader {
-    cache: Mutex<HashMap<String, Entry>>,
+    cache: SMutex<HashMap<String, Entry>>,
 }
 
 impl WebPLoader {

@@ -1,5 +1,5 @@
 use std::ops::Range;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use super::{
     cursor::{CCursor, LayoutCursor},
@@ -516,7 +516,7 @@ impl TextWrapping {
 pub struct Galley {
     /// The job that this galley is the result of.
     /// Contains the original string and style sections.
-    pub job: Arc<LayoutJob>,
+    pub job: Rc<LayoutJob>,
 
     /// Rows of text, from top to bottom, and their offsets.
     ///
@@ -568,7 +568,7 @@ pub struct PlacedRow {
     pub pos: Pos2,
 
     /// The underlying unpositioned [`Row`].
-    pub row: Arc<Row>,
+    pub row: Rc<Row>,
 
     /// If true, this [`PlacedRow`] came from a paragraph ending with a `\n`.
     /// The `\n` itself is omitted from row's [`Row::glyphs`].
@@ -815,7 +815,7 @@ impl Galley {
             // Optimization: only call `make_mut` if necessary (can cause a deep clone)
             let rounded_size = placed_row.row.size.round_ui();
             if placed_row.row.size != rounded_size {
-                Arc::make_mut(&mut placed_row.row).size = rounded_size;
+                Rc::make_mut(&mut placed_row.row).size = rounded_size;
             }
         }
 
@@ -839,7 +839,7 @@ impl Galley {
     }
 
     /// Append each galley under the previous one.
-    pub fn concat(job: Arc<LayoutJob>, galleys: &[Arc<Self>], pixels_per_point: f32) -> Self {
+    pub fn concat(job: Rc<LayoutJob>, galleys: &[Rc<Self>], pixels_per_point: f32) -> Self {
         profiling::function_scope!();
 
         let mut merged_galley = Self {
@@ -873,7 +873,7 @@ impl Galley {
                     ends_with_newline |= !is_last_galley && is_last_row_in_galley;
                     super::PlacedRow {
                         pos: new_pos,
-                        row: Arc::clone(&placed_row.row),
+                        row: Rc::clone(&placed_row.row),
                         ends_with_newline,
                     }
                 }));

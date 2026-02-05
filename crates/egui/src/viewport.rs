@@ -69,7 +69,7 @@
 //! There are several more things related to viewports that we want to add.
 //! Read more at <https://github.com/emilk/egui/issues/3556>.
 
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
 use epaint::{Pos2, Vec2};
 
@@ -306,7 +306,7 @@ pub struct ViewportBuilder {
     pub resizable: Option<bool>,
     pub transparent: Option<bool>,
     pub decorations: Option<bool>,
-    pub icon: Option<Arc<IconData>>,
+    pub icon: Option<Rc<IconData>>,
     pub active: Option<bool>,
     pub visible: Option<bool>,
 
@@ -419,7 +419,7 @@ impl ViewportBuilder {
     /// The default icon is a white `e` on a black background (for "egui" or "eframe").
     /// If you prefer the OS default, set this to `IconData::default()`.
     #[inline]
-    pub fn with_icon(mut self, icon: impl Into<Arc<IconData>>) -> Self {
+    pub fn with_icon(mut self, icon: impl Into<Rc<IconData>>) -> Self {
         self.icon = Some(icon.into());
         self
     }
@@ -793,12 +793,12 @@ impl ViewportBuilder {
 
         if let Some(new_icon) = new_icon {
             let is_new = match &self.icon {
-                Some(existing) => !Arc::ptr_eq(&new_icon, existing),
+                Some(existing) => !Rc::ptr_eq(&new_icon, existing),
                 None => true,
             };
 
             if is_new {
-                commands.push(ViewportCommand::Icon(Some(Arc::clone(&new_icon))));
+                commands.push(ViewportCommand::Icon(Some(Rc::clone(&new_icon))));
                 self.icon = Some(new_icon);
             }
         }
@@ -1113,7 +1113,7 @@ pub enum ViewportCommand {
     WindowLevel(WindowLevel),
 
     /// The window icon.
-    Icon(Option<Arc<IconData>>),
+    Icon(Option<Rc<IconData>>),
 
     /// Set the IME cursor editing area.
     IMERect(crate::Rect),

@@ -2,19 +2,19 @@ use ahash::HashMap;
 use egui::{
     ColorImage, decode_animated_image_uri,
     load::{Bytes, BytesPoll, ImageLoadResult, ImageLoader, ImagePoll, LoadError, SizeHint},
-    mutex::Mutex,
 };
+use egui_mutex::SMutex;
 use image::ImageFormat;
 use std::{mem::size_of, path::Path, sync::Arc, task::Poll};
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 
-type Entry = Poll<Result<Arc<ColorImage>, String>>;
+type Entry = Poll<Result<ColorImage, String>>;
 
 #[derive(Default)]
 pub struct ImageCrateLoader {
-    cache: Arc<Mutex<HashMap<String, Entry>>>,
+    cache: Arc<SMutex<HashMap<String, Entry>>>,
 }
 
 impl ImageCrateLoader {
@@ -83,17 +83,19 @@ impl ImageLoader for ImageCrateLoader {
         fn load_image(
             ctx: &egui::Context,
             uri: &str,
-            cache: &Arc<Mutex<HashMap<String, Entry>>>,
+            cache: &Arc<SMutex<HashMap<String, Entry>>>,
             bytes: &Bytes,
         ) -> ImageLoadResult {
             let uri = uri.to_owned();
             cache.lock().insert(uri.clone(), Poll::Pending);
 
+            let repaint_request_proxy = ctx.get_repaint_request_proxy();
+            let viewport_id = ctx.viewport_id();
+
             // Do the image parsing on a bg thread
             thread::Builder::new()
                 .name(format!("egui_extras::ImageLoader::load({uri:?})"))
                 .spawn({
-                    let ctx = ctx.clone();
                     let cache = Arc::clone(cache);
 
                     let uri = uri.clone();
@@ -101,7 +103,6 @@ impl ImageLoader for ImageCrateLoader {
                     move || {
                         log::trace!("ImageLoader - started loading {uri:?}");
                         let result = crate::image::load_image_bytes(&bytes)
-                            .map(Arc::new)
                             .map_err(|err| err.to_string());
                         let repaint = {
                             let mut cache = cache.lock();
@@ -124,7 +125,14 @@ impl ImageLoader for ImageCrateLoader {
                         // - loader thread: try to lock ctx (in `request_repaint`)
                         // - main thread: try to lock cache (from `Self::has_pending`)
                         if repaint {
-                            ctx.request_repaint();
+                            match &repaint_request_proxy {
+                                Some(proxy) => proxy.request_repaint(viewport_id),
+                                None => {
+                                    log::warn!(
+                                        "Cannot send a repaint request because no repaint proxy is available"
+                                    );
+                                }
+                            };
                         }
                     }
                 })

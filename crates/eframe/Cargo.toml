@@ -122,7 +122,10 @@ egui = { workspace = true, default-features = false, features = ["bytemuck"] }
 ahash.workspace = true
 document-features.workspace = true
 log.workspace = true
-parking_lot.workspace = true
+# parking_lot.workspace not available anymore
+#parking_lot.workspace = true
+parking_lot = "0.12.5"
+
 profiling.workspace = true
 raw-window-handle.workspace = true
 static_assertions.workspace = true

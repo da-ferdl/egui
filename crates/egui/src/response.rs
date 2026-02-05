@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc};
+use std::{any::Any, rc::Rc};
 
 use crate::{
     Context, CursorIcon, Id, LayerId, PointerButton, Popup, PopupKind, Sense, Tooltip, Ui,
@@ -441,7 +441,7 @@ impl Response {
 
     /// If the user started dragging this widget this frame, store the payload for drag-and-drop.
     #[doc(alias = "drag and drop")]
-    pub fn dnd_set_drag_payload<Payload: Any + Send + Sync>(&self, payload: Payload) {
+    pub fn dnd_set_drag_payload<Payload: Any>(&self, payload: Payload) {
         if self.drag_started() {
             crate::DragAndDrop::set_payload(&self.ctx, payload);
         }
@@ -458,7 +458,7 @@ impl Response {
     /// Only returns something if [`Self::contains_pointer`] is true,
     /// and the user is drag-dropping something of this type.
     #[doc(alias = "drag and drop")]
-    pub fn dnd_hover_payload<Payload: Any + Send + Sync>(&self) -> Option<Arc<Payload>> {
+    pub fn dnd_hover_payload<Payload: Any>(&self) -> Option<Rc<Payload>> {
         // NOTE: we use `response.contains_pointer` here instead of `hovered`, because
         // `hovered` is always false when another widget is being dragged.
         if self.contains_pointer() {
@@ -474,7 +474,7 @@ impl Response {
     /// the user is drag-dropping something of this type,
     /// and they released it this frame.
     #[doc(alias = "drag and drop")]
-    pub fn dnd_release_payload<Payload: Any + Send + Sync>(&self) -> Option<Arc<Payload>> {
+    pub fn dnd_release_payload<Payload: Any>(&self) -> Option<Rc<Payload>> {
         // NOTE: we use `response.contains_pointer` here instead of `hovered`, because
         // `hovered` is always false when another widget is being dragged.
         if self.contains_pointer() && self.ctx.input(|i| i.pointer.any_released()) {

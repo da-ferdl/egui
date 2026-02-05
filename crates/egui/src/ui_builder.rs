@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::Arc};
+use std::{hash::Hash, rc::Rc};
 
 use crate::ClosableTag;
 #[expect(unused_imports)] // Used for doclinks
@@ -22,7 +22,7 @@ pub struct UiBuilder {
     pub disabled: bool,
     pub invisible: bool,
     pub sizing_pass: bool,
-    pub style: Option<Arc<Style>>,
+    pub style: Option<Rc<Style>>,
     pub sense: Option<Sense>,
     pub accessibility_parent: Option<Id>,
 }
@@ -149,7 +149,7 @@ impl UiBuilder {
     ///
     /// Otherwise will inherit the style of the parent.
     #[inline]
-    pub fn style(mut self, style: impl Into<Arc<Style>>) -> Self {
+    pub fn style(mut self, style: impl Into<Rc<Style>>) -> Self {
         self.style = Some(style.into());
         self
     }
@@ -178,7 +178,7 @@ impl UiBuilder {
     pub fn closable(mut self) -> Self {
         self.ui_stack_info
             .tags
-            .insert(ClosableTag::NAME, Some(Arc::new(ClosableTag::default())));
+            .insert(ClosableTag::NAME, Some(Rc::new(ClosableTag::default())));
         self
     }
 

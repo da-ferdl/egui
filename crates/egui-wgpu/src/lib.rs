@@ -34,9 +34,8 @@ pub mod capture;
 #[cfg(feature = "winit")]
 pub mod winit;
 
+use egui_mutex::SMutex;
 use std::sync::Arc;
-
-use epaint::mutex::RwLock;
 
 /// An error produced by egui-wgpu.
 #[derive(thiserror::Error, Debug)]
@@ -84,7 +83,7 @@ pub struct RenderState {
     pub target_format: wgpu::TextureFormat,
 
     /// Egui renderer responsible for drawing the UI.
-    pub renderer: Arc<RwLock<Renderer>>,
+    pub renderer: Arc<SMutex<Renderer>>,
 }
 
 async fn request_adapter(
@@ -253,7 +252,7 @@ impl RenderState {
             device,
             queue,
             target_format,
-            renderer: Arc::new(RwLock::new(renderer)),
+            renderer: Arc::new(SMutex::new(renderer)),
         })
     }
 }

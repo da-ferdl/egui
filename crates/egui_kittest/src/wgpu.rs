@@ -106,7 +106,7 @@ impl WgpuTestRenderer {
         assert!(
             render_state
                 .renderer
-                .read()
+                .lock()
                 .texture(&egui::epaint::TextureId::Managed(0))
                 .is_none(),
             "The RenderState passed in has been used before, pass in a fresh RenderState instead."
@@ -123,7 +123,7 @@ impl crate::TestRenderer for WgpuTestRenderer {
     }
 
     fn handle_delta(&mut self, delta: &TexturesDelta) {
-        let mut renderer = self.render_state.renderer.write();
+        let mut renderer = self.render_state.renderer.lock();
         for (id, image) in &delta.set {
             renderer.update_texture(
                 &self.render_state.device,
@@ -140,7 +140,7 @@ impl crate::TestRenderer for WgpuTestRenderer {
         ctx: &egui::Context,
         output: &egui::FullOutput,
     ) -> Result<RgbaImage, String> {
-        let mut renderer = self.render_state.renderer.write();
+        let mut renderer = self.render_state.renderer.lock();
 
         let mut encoder =
             self.render_state

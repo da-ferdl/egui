@@ -1,14 +1,14 @@
 use crate::{Id, Image};
 use emath::Vec2;
 use epaint::Galley;
-use std::sync::Arc;
+use std::rc::Rc;
 
 /// A sized [`crate::AtomKind`].
 #[derive(Clone, Default, Debug)]
 pub enum SizedAtomKind<'a> {
     #[default]
     Empty,
-    Text(Arc<Galley>),
+    Text(Rc<Galley>),
     Image(Image<'a>, Vec2),
     Custom(Id),
 }

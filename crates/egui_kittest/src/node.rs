@@ -1,6 +1,6 @@
 use egui::accesskit::ActionRequest;
-use egui::mutex::Mutex;
 use egui::{Modifiers, PointerButton, Pos2, accesskit};
+use egui_mutex::SMutex;
 use kittest::{AccessKitNode, NodeT, debug_fmt_node};
 use std::fmt::{Debug, Formatter};
 
@@ -9,7 +9,7 @@ pub(crate) enum EventType {
     Modifiers(Modifiers),
 }
 
-pub(crate) type EventQueue = Mutex<Vec<EventType>>;
+pub(crate) type EventQueue = SMutex<Vec<EventType>>;
 
 #[derive(Clone, Copy)]
 pub struct Node<'tree> {

@@ -1,3 +1,10 @@
+## **ATTENTION:** On this fork eframe is not functional!
+
+This fork exposes a custom eframe version `xframe`, which is a adjusted (and highly opinionated)
+copy of eframe.
+
+This fork makes many changes to egui itself but eframe on this fork is not adapted to the changes!
+
 # eframe: the [`egui`](https://github.com/emilk/egui) framework
 
 [![Latest version](https://img.shields.io/crates/v/eframe.svg)](https://crates.io/crates/eframe)

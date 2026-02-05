@@ -450,7 +450,7 @@ pub use emath::{
 };
 pub use epaint::{
     ClippedPrimitive, ColorImage, CornerRadius, ImageData, Margin, Mesh, PaintCallback,
-    PaintCallbackInfo, Shadow, Shape, Stroke, StrokeKind, TextureHandle, TextureId, mutex,
+    PaintCallbackInfo, Shadow, Shape, Stroke, StrokeKind, TextureHandle, TextureId,
     text::{FontData, FontDefinitions, FontFamily, FontId, FontTweak},
     textures::{TextureFilter, TextureOptions, TextureWrapMode, TexturesDelta},
 };
@@ -466,7 +466,7 @@ pub mod text {
 pub use self::{
     atomics::*,
     containers::{menu::MenuBar, *},
-    context::{Context, RepaintCause, RequestRepaintInfo},
+    context::{Context, RepaintCause, RepaintRequestProxy, RequestRepaintInfo},
     data::{
         Key, UserData,
         input::*,

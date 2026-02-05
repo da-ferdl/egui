@@ -557,7 +557,7 @@ pub enum Event {
         /// Whatever was passed to [`crate::ViewportCommand::Screenshot`].
         user_data: crate::UserData,
 
-        image: std::sync::Arc<ColorImage>,
+        image: ColorImage,
     },
 }
 

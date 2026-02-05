@@ -1,6 +1,6 @@
 // WARNING: the code in here is horrible. It is a behemoth that needs breaking up into simpler parts.
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use emath::GuiRounding as _;
 use epaint::{CornerRadiusF32, RectShape};
@@ -1180,7 +1180,7 @@ struct TitleBar {
     window_frame: Frame,
 
     /// Prepared text in the title
-    title_galley: Arc<Galley>,
+    title_galley: Rc<Galley>,
 
     /// Size of the title bar in an expanded state. This size become known only
     /// after expanding window and painting its content.
@@ -1295,7 +1295,7 @@ impl TitleBar {
         let text_pos = text_pos - self.title_galley.rect.min.to_vec2();
         ui.painter().galley(
             text_pos,
-            Arc::clone(&self.title_galley),
+            Rc::clone(&self.title_galley),
             ui.visuals().text_color(),
         );
 

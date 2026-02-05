@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 use std::{any::Any, iter::FusedIterator};
 
 use crate::{Direction, Frame, Id, Rect};
@@ -133,12 +133,8 @@ impl UiStackInfo {
 
     /// Insert a tag with some value.
     #[inline]
-    pub fn with_tag_value(
-        mut self,
-        key: impl Into<String>,
-        value: impl Any + Send + Sync + 'static,
-    ) -> Self {
-        self.tags.insert(key, Some(Arc::new(value)));
+    pub fn with_tag_value(mut self, key: impl Into<String>, value: impl Any + 'static) -> Self {
+        self.tags.insert(key, Some(Rc::new(value)));
         self
     }
 }
@@ -155,15 +151,11 @@ impl UiStackInfo {
 ///
 /// All tagging is transient, and will only live as long as the parent [`crate::Ui`], i.e. within a single render frame.
 #[derive(Clone, Default, Debug)]
-pub struct UiTags(pub ahash::HashMap<String, Option<Arc<dyn Any + Send + Sync + 'static>>>);
+pub struct UiTags(pub ahash::HashMap<String, Option<Rc<dyn Any + 'static>>>);
 
 impl UiTags {
     #[inline]
-    pub fn insert(
-        &mut self,
-        key: impl Into<String>,
-        value: Option<Arc<dyn Any + Send + Sync + 'static>>,
-    ) {
+    pub fn insert(&mut self, key: impl Into<String>, value: Option<Rc<dyn Any + 'static>>) {
         self.0.insert(key.into(), value);
     }
 
@@ -177,7 +169,7 @@ impl UiTags {
     /// Note that `None` is returned both if the key is set to the value `None`,
     /// and if the key is not set at all.
     #[inline]
-    pub fn get_any(&self, key: &str) -> Option<&Arc<dyn Any + Send + Sync + 'static>> {
+    pub fn get_any(&self, key: &str) -> Option<&Rc<dyn Any + 'static>> {
         self.0.get(key)?.as_ref()
     }
 
@@ -185,7 +177,7 @@ impl UiTags {
     ///
     /// Note that `None` is returned both if the key is set to the value `None`,
     /// and if the key is not set at all.
-    pub fn get_downcast<T: Any + Send + Sync + 'static>(&self, key: &str) -> Option<&T> {
+    pub fn get_downcast<T: Any + 'static>(&self, key: &str) -> Option<&T> {
         self.0.get(key)?.as_ref().and_then(|any| any.downcast_ref())
     }
 }
@@ -209,7 +201,7 @@ pub struct UiStack {
     pub layout_direction: Direction,
     pub min_rect: Rect,
     pub max_rect: Rect,
-    pub parent: Option<Arc<Self>>,
+    pub parent: Option<Rc<Self>>,
 }
 
 // these methods act on this specific node

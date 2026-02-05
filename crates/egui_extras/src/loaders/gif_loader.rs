@@ -2,15 +2,15 @@ use ahash::HashMap;
 use egui::{
     ColorImage, FrameDurations, Id, decode_animated_image_uri, has_gif_magic_header,
     load::{BytesPoll, ImageLoadResult, ImageLoader, ImagePoll, LoadError, SizeHint},
-    mutex::Mutex,
 };
+use egui_mutex::SMutex;
 use image::AnimationDecoder as _;
 use std::{io::Cursor, mem::size_of, sync::Arc, time::Duration};
 
 /// Array of Frames and the duration for how long each frame should be shown
 #[derive(Debug, Clone)]
 pub struct AnimatedImage {
-    frames: Vec<Arc<ColorImage>>,
+    frames: Vec<ColorImage>,
     frame_durations: FrameDurations,
 }
 
@@ -26,10 +26,10 @@ impl AnimatedImage {
             let pixels = img.as_flat_samples();
 
             let delay: Duration = frame.delay().into();
-            images.push(Arc::new(ColorImage::from_rgba_unmultiplied(
+            images.push(ColorImage::from_rgba_unmultiplied(
                 [img.width() as usize, img.height() as usize],
                 pixels.as_slice(),
-            )));
+            ));
             durations.push(delay);
         }
         Ok(Self {
@@ -52,15 +52,15 @@ impl AnimatedImage {
     }
 
     /// Gets image at index
-    pub fn get_image(&self, index: usize) -> Arc<ColorImage> {
-        Arc::clone(&self.frames[index % self.frames.len()])
+    pub fn get_image(&self, index: usize) -> ColorImage {
+        self.frames[index % self.frames.len()].clone()
     }
 }
 type Entry = Result<Arc<AnimatedImage>, String>;
 
 #[derive(Default)]
 pub struct GifLoader {
-    cache: Mutex<HashMap<String, Entry>>,
+    cache: SMutex<HashMap<String, Entry>>,
 }
 
 impl GifLoader {

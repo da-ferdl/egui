@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use crate::mutex::Mutex;
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     Context, Id, Vec2,
@@ -37,9 +35,9 @@ pub struct TextEditState {
     /// Controls the text selection.
     pub cursor: TextCursorState,
 
-    /// Wrapped in Arc for cheaper clones.
+    /// Wrapped in Rc for cheaper clones.
     #[cfg_attr(feature = "serde", serde(skip))]
-    pub(crate) undoer: Arc<Mutex<TextEditUndoer>>,
+    pub(crate) undoer: Rc<RefCell<TextEditUndoer>>,
 
     // If IME candidate window is shown on this text edit.
     #[cfg_attr(feature = "serde", serde(skip))]
@@ -70,12 +68,12 @@ impl TextEditState {
     }
 
     pub fn undoer(&self) -> TextEditUndoer {
-        self.undoer.lock().clone()
+        self.undoer.borrow().clone()
     }
 
     #[expect(clippy::needless_pass_by_ref_mut)] // Intentionally hide interiority of mutability
     pub fn set_undoer(&mut self, undoer: TextEditUndoer) {
-        *self.undoer.lock() = undoer;
+        *self.undoer.borrow_mut() = undoer;
     }
 
     pub fn clear_undoer(&mut self) {

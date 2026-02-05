@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use emath::TSTransform;
 
@@ -164,12 +164,12 @@ impl Plugin for LabelSelectionState {
                         for (shape_idx, row_selections) in self.painted_selections.drain(..) {
                             list.mutate_shape(shape_idx, |shape| {
                                 if let epaint::Shape::Text(text_shape) = &mut shape.shape {
-                                    let galley = Arc::make_mut(&mut text_shape.galley);
+                                    let galley = Rc::make_mut(&mut text_shape.galley);
                                     for row_selection in row_selections {
                                         if let Some(placed_row) =
                                             galley.rows.get_mut(row_selection.row)
                                         {
-                                            let row = Arc::make_mut(&mut placed_row.row);
+                                            let row = Rc::make_mut(&mut placed_row.row);
                                             for vertex_index in row_selection.vertex_indices {
                                                 if let Some(vertex) = row
                                                     .visuals
@@ -273,7 +273,7 @@ impl LabelSelectionState {
         ui: &Ui,
         response: &Response,
         galley_pos: Pos2,
-        mut galley: Arc<Galley>,
+        mut galley: Rc<Galley>,
         fallback_color: epaint::Color32,
         underline: epaint::Stroke,
     ) {
@@ -484,7 +484,7 @@ impl LabelSelectionState {
         ui: &Ui,
         response: &Response,
         galley_pos_in_layer: Pos2,
-        galley: &mut Arc<Galley>,
+        galley: &mut Rc<Galley>,
     ) -> Vec<RowVertexIndices> {
         let widget_id = response.id;
 

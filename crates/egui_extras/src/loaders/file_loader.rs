@@ -1,13 +1,11 @@
 use ahash::HashMap;
-use egui::{
-    load::{Bytes, BytesLoadResult, BytesLoader, BytesPoll, LoadError},
-    mutex::Mutex,
-};
+use egui::load::{Bytes, BytesLoadResult, BytesLoader, BytesPoll, LoadError};
+use egui_mutex::SMutex;
 use std::{sync::Arc, task::Poll, thread};
 
 #[derive(Clone)]
 struct File {
-    bytes: Arc<[u8]>,
+    bytes: Box<[u8]>,
     mime: Option<String>,
 }
 
@@ -16,7 +14,7 @@ type Entry = Poll<Result<File, String>>;
 #[derive(Default)]
 pub struct FileLoader {
     /// Cache for loaded files
-    cache: Arc<Mutex<HashMap<String, Entry>>>,
+    cache: Arc<SMutex<HashMap<String, Entry>>>,
 }
 
 impl FileLoader {
@@ -70,11 +68,13 @@ impl BytesLoader for FileLoader {
             cache.insert(uri.to_owned(), Poll::Pending);
             drop(cache);
 
+            let repaint_request_proxy = ctx.get_repaint_request_proxy();
+            let viewport_id = ctx.viewport_id();
+
             // Spawn a thread to read the file, so that we don't block the render for too long.
             thread::Builder::new()
                 .name(format!("egui_extras::FileLoader::load({uri:?})"))
                 .spawn({
-                    let ctx = ctx.clone();
                     let cache = Arc::clone(&self.cache);
                     let uri = uri.to_owned();
                     move || {
@@ -110,7 +110,14 @@ impl BytesLoader for FileLoader {
                         // We may not lock Context while the cache lock is held (see ImageLoader::load
                         // for details).
                         if repaint {
-                            ctx.request_repaint();
+                            match &repaint_request_proxy {
+                                Some(proxy) => proxy.request_repaint(viewport_id),
+                                None => {
+                                    log::warn!(
+                                        "Cannot send a repaint request because no repaint proxy is available"
+                                    );
+                                }
+                            };
                         }
                     }
                 })

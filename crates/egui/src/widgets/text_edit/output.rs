@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::text::CCursorRange;
 
@@ -8,7 +8,7 @@ pub struct TextEditOutput {
     pub response: crate::Response,
 
     /// How the text was displayed.
-    pub galley: Arc<crate::Galley>,
+    pub galley: Rc<crate::Galley>,
 
     /// Where the text in [`Self::galley`] ended up on the screen.
     pub galley_pos: crate::Pos2,

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{Galley, Painter, Rect, Ui, Visuals, pos2, vec2};
 
@@ -12,7 +12,7 @@ pub struct RowVertexIndices {
 
 /// Adds text selection rectangles to the galley.
 pub fn paint_text_selection(
-    galley: &mut Arc<Galley>,
+    galley: &mut Rc<Galley>,
     visuals: &Visuals,
     cursor_range: &CCursorRange,
     mut new_vertex_indices: Option<&mut Vec<RowVertexIndices>>,
@@ -23,7 +23,7 @@ pub fn paint_text_selection(
 
     // We need to modify the galley (add text selection painting to it),
     // and so we need to clone it if it is shared:
-    let galley: &mut Galley = Arc::make_mut(galley);
+    let galley: &mut Galley = Rc::make_mut(galley);
 
     let background_color = visuals.selection.bg_fill;
     let text_color = visuals.selection.stroke.color;
@@ -34,7 +34,7 @@ pub fn paint_text_selection(
 
     for ri in min.row..=max.row {
         let placed_row = &mut galley.rows[ri];
-        let row = Arc::make_mut(&mut placed_row.row);
+        let row = Rc::make_mut(&mut placed_row.row);
 
         let left = if ri == min.row {
             row.x_offset(min.column)

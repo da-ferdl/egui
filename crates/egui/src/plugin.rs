@@ -1,7 +1,9 @@
 use crate::{Context, FullOutput, RawInput, Ui};
 use ahash::HashMap;
-use epaint::mutex::{Mutex, MutexGuard};
-use std::sync::Arc;
+use std::{
+    cell::{RefCell, RefMut},
+    rc::Rc,
+};
 
 /// A plugin to extend egui.
 ///
@@ -10,7 +12,7 @@ use std::sync::Arc;
 /// Plugins should not hold a reference to the [`Context`], since this would create a cycle
 /// (which would prevent the [`Context`] from being dropped).
 #[expect(unused_variables)]
-pub trait Plugin: Send + Sync + std::any::Any + 'static {
+pub trait Plugin: std::any::Any + 'static {
     /// Plugin name.
     ///
     /// Used when profiling.
@@ -59,12 +61,12 @@ pub(crate) struct PluginHandle {
 ///
 /// Use [`Self::lock`] to access the plugin.
 pub struct TypedPluginHandle<P: Plugin> {
-    handle: Arc<Mutex<PluginHandle>>,
+    handle: Rc<RefCell<PluginHandle>>,
     _type: std::marker::PhantomData<P>,
 }
 
 impl<P: Plugin> TypedPluginHandle<P> {
-    pub(crate) fn new(handle: Arc<Mutex<PluginHandle>>) -> Self {
+    pub(crate) fn new(handle: Rc<RefCell<PluginHandle>>) -> Self {
         Self {
             handle,
             _type: std::marker::PhantomData,
@@ -76,7 +78,7 @@ impl<P: Plugin> TypedPluginHandle<P> {
     /// Returns a guard that dereferences to the plugin.
     pub fn lock(&self) -> TypedPluginGuard<'_, P> {
         TypedPluginGuard {
-            guard: self.handle.lock(),
+            guard: self.handle.borrow_mut(),
             _type: std::marker::PhantomData,
         }
     }
@@ -84,7 +86,7 @@ impl<P: Plugin> TypedPluginHandle<P> {
 
 /// A guard that provides access to a [`Plugin`].
 pub struct TypedPluginGuard<'a, P: Plugin> {
-    guard: MutexGuard<'a, PluginHandle>,
+    guard: RefMut<'a, PluginHandle>,
     _type: std::marker::PhantomData<P>,
 }
 
@@ -105,8 +107,8 @@ impl<P: Plugin> std::ops::DerefMut for TypedPluginGuard<'_, P> {
 }
 
 impl PluginHandle {
-    pub fn new<P: Plugin>(plugin: P) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(Self {
+    pub fn new<P: Plugin>(plugin: P) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Self {
             plugin: Box::new(plugin),
         }))
     }
@@ -135,12 +137,12 @@ impl PluginHandle {
 /// User-registered plugins.
 #[derive(Clone, Default)]
 pub(crate) struct Plugins {
-    plugins: HashMap<std::any::TypeId, Arc<Mutex<PluginHandle>>>,
+    plugins: HashMap<std::any::TypeId, Rc<RefCell<PluginHandle>>>,
     plugins_ordered: PluginsOrdered,
 }
 
 #[derive(Clone, Default)]
-pub(crate) struct PluginsOrdered(Vec<Arc<Mutex<PluginHandle>>>);
+pub(crate) struct PluginsOrdered(Vec<Rc<RefCell<PluginHandle>>>);
 
 impl PluginsOrdered {
     fn for_each_dyn<F>(&self, mut f: F)
@@ -148,7 +150,7 @@ impl PluginsOrdered {
         F: FnMut(&mut dyn Plugin),
     {
         for plugin in &self.0 {
-            let mut plugin = plugin.lock();
+            let mut plugin = plugin.borrow_mut();
             profiling::scope!("plugin", plugin.dyn_plugin_mut().debug_name());
             f(plugin.dyn_plugin_mut());
         }
@@ -200,28 +202,28 @@ impl Plugins {
     ///
     /// Will not add the plugin if a plugin of the same type already exists.
     /// Returns `false` if the plugin was not added, `true` if it was added.
-    pub fn add(&mut self, handle: Arc<Mutex<PluginHandle>>) -> bool {
+    pub fn add(&mut self, handle: Rc<RefCell<PluginHandle>>) -> bool {
         profiling::scope!("plugins", "add");
 
-        let type_id = handle.lock().plugin_type_id();
+        let type_id = handle.borrow().plugin_type_id();
 
         if self.plugins.contains_key(&type_id) {
             return false;
         }
 
-        self.plugins.insert(type_id, Arc::clone(&handle));
+        self.plugins.insert(type_id, Rc::clone(&handle));
         self.plugins_ordered.0.push(handle);
 
         true
     }
 
-    pub fn get(&self, type_id: std::any::TypeId) -> Option<Arc<Mutex<PluginHandle>>> {
+    pub fn get(&self, type_id: std::any::TypeId) -> Option<Rc<RefCell<PluginHandle>>> {
         self.plugins.get(&type_id).cloned()
     }
 }
 
 /// Generic event callback.
-pub type ContextCallback = Arc<dyn Fn(&mut Ui) + Send + Sync>;
+pub type ContextCallback = Rc<dyn Fn(&mut Ui)>;
 
 #[derive(Default)]
 pub(crate) struct CallbackPlugin {

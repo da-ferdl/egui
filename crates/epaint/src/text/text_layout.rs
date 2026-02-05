@@ -1,6 +1,6 @@
 #![expect(clippy::unwrap_used)] // TODO(emilk): remove unwraps
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use emath::{Align, GuiRounding as _, NumExt as _, Pos2, Rect, Vec2, pos2, vec2};
 
@@ -77,7 +77,7 @@ impl Paragraph {
 ///
 /// In most cases you should use [`crate::FontsView::layout_job`] instead
 /// since that memoizes the input, making subsequent layouting of the same text much faster.
-pub fn layout(fonts: &mut FontsImpl, pixels_per_point: f32, job: Arc<LayoutJob>) -> Galley {
+pub fn layout(fonts: &mut FontsImpl, pixels_per_point: f32, job: Rc<LayoutJob>) -> Galley {
     profiling::function_scope!();
 
     if job.wrap.max_rows == 0 {
@@ -116,7 +116,7 @@ pub fn layout(fonts: &mut FontsImpl, pixels_per_point: f32, job: Arc<LayoutJob>)
     let mut elided = false;
     let mut rows = rows_from_paragraphs(paragraphs, &job, &mut elided);
     if elided && let Some(last_placed) = rows.last_mut() {
-        let last_row = Arc::make_mut(&mut last_placed.row);
+        let last_row = Rc::make_mut(&mut last_placed.row);
         replace_last_glyph_with_overflow_character(fonts, pixels_per_point, &job, last_row);
         if let Some(last) = last_row.glyphs.last() {
             last_row.size.x = last.max_x();
@@ -294,7 +294,7 @@ fn rows_from_paragraphs(
         if paragraph.glyphs.is_empty() {
             rows.push(PlacedRow {
                 pos: pos2(0.0, f32::NAN),
-                row: Arc::new(Row {
+                row: Rc::new(Row {
                     section_index_at_start: paragraph.section_index_at_start,
                     glyphs: vec![],
                     visuals: Default::default(),
@@ -308,7 +308,7 @@ fn rows_from_paragraphs(
                 // Early-out optimization: the whole paragraph fits on one row.
                 rows.push(PlacedRow {
                     pos: pos2(0.0, f32::NAN),
-                    row: Arc::new(Row {
+                    row: Rc::new(Row {
                         section_index_at_start: paragraph.section_index_at_start,
                         glyphs: paragraph.glyphs,
                         visuals: Default::default(),
@@ -360,7 +360,7 @@ fn line_break(
                 // TODO(emilk): this records the height of this first row as zero, though that is probably fine since first_row_indentation usually comes with a first_row_min_height.
                 out_rows.push(PlacedRow {
                     pos: pos2(0.0, f32::NAN),
-                    row: Arc::new(Row {
+                    row: Rc::new(Row {
                         section_index_at_start: paragraph.section_index_at_start,
                         glyphs: vec![],
                         visuals: Default::default(),
@@ -386,7 +386,7 @@ fn line_break(
 
                 out_rows.push(PlacedRow {
                     pos: pos2(0.0, f32::NAN),
-                    row: Arc::new(Row {
+                    row: Rc::new(Row {
                         section_index_at_start,
                         glyphs,
                         visuals: Default::default(),
@@ -428,7 +428,7 @@ fn line_break(
 
             out_rows.push(PlacedRow {
                 pos: pos2(paragraph_min_x, 0.0),
-                row: Arc::new(Row {
+                row: Rc::new(Row {
                     section_index_at_start,
                     glyphs,
                     visuals: Default::default(),
@@ -560,7 +560,7 @@ fn halign_and_justify_row(
 ) {
     #![expect(clippy::useless_let_if_seq)] // False positive
 
-    let row = Arc::make_mut(&mut placed_row.row);
+    let row = Rc::make_mut(&mut placed_row.row);
 
     if row.glyphs.is_empty() {
         return;
@@ -648,7 +648,7 @@ fn halign_and_justify_row(
 /// Calculate the Y positions and tessellate the text.
 fn galley_from_rows(
     point_scale: PointScale,
-    job: Arc<LayoutJob>,
+    job: Rc<LayoutJob>,
     mut rows: Vec<PlacedRow>,
     elided: bool,
     intrinsic_size: Vec2,
@@ -658,7 +658,7 @@ fn galley_from_rows(
 
     for placed_row in &mut rows {
         let mut max_row_height = first_row_min_height.at_least(placed_row.height());
-        let row = Arc::make_mut(&mut placed_row.row);
+        let row = Rc::make_mut(&mut placed_row.row);
 
         first_row_min_height = 0.0;
         for glyph in &row.glyphs {
@@ -699,7 +699,7 @@ fn galley_from_rows(
     for placed_row in &mut rows {
         rect |= placed_row.rect();
 
-        let row = Arc::make_mut(&mut placed_row.row);
+        let row = Rc::make_mut(&mut placed_row.row);
         row.visuals = tessellate_row(point_scale, &job, &format_summary, row);
 
         mesh_bounds |= row.visuals.mesh_bounds.translate(placed_row.pos.to_vec2());

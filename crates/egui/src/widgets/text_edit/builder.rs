@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use emath::{Rect, TSTransform};
 use epaint::{
@@ -19,7 +19,7 @@ use crate::{
 
 use super::{TextEditOutput, TextEditState};
 
-type LayouterFn<'t> = &'t mut dyn FnMut(&Ui, &dyn TextBuffer, f32) -> Arc<Galley>;
+type LayouterFn<'t> = &'t mut dyn FnMut(&Ui, &dyn TextBuffer, f32) -> Rc<Galley>;
 
 /// A text region that the user can edit the contents of.
 ///
@@ -274,7 +274,7 @@ impl<'t> TextEdit<'t> {
     #[inline]
     pub fn layouter(
         mut self,
-        layouter: &'t mut dyn FnMut(&Ui, &dyn TextBuffer, f32) -> Arc<Galley>,
+        layouter: &'t mut dyn FnMut(&Ui, &dyn TextBuffer, f32) -> Rc<Galley>,
     ) -> Self {
         self.layouter = Some(layouter);
 
@@ -759,7 +759,7 @@ impl TextEdit<'_> {
                 ui.skip_ahead_auto_ids(1);
             }
 
-            painter.galley(galley_pos, Arc::clone(&galley), text_color);
+            painter.galley(galley_pos, Rc::clone(&galley), text_color);
 
             if has_focus && let Some(cursor_range) = state.cursor.range(&galley) {
                 let primary_cursor_rect = cursor_rect(&galley, &cursor_range.primary, row_height)
@@ -900,8 +900,8 @@ fn events(
     ui: &crate::Ui,
     state: &mut TextEditState,
     text: &mut dyn TextBuffer,
-    galley: &mut Arc<Galley>,
-    layouter: &mut dyn FnMut(&Ui, &dyn TextBuffer, f32) -> Arc<Galley>,
+    galley: &mut Rc<Galley>,
+    layouter: &mut dyn FnMut(&Ui, &dyn TextBuffer, f32) -> Rc<Galley>,
     id: Id,
     wrap_width: f32,
     multiline: bool,
@@ -917,7 +917,7 @@ fn events(
 
     // We feed state to the undoer both before and after handling input
     // so that the undoer creates automatic saves even when there are no events for a while.
-    state.undoer.lock().feed_state(
+    state.undoer.borrow_mut().feed_state(
         ui.input(|i| i.time),
         &(cursor_range, text.as_str().to_owned()),
     );
@@ -1030,7 +1030,7 @@ fn events(
             {
                 if let Some((redo_ccursor_range, redo_txt)) = state
                     .undoer
-                    .lock()
+                    .borrow_mut()
                     .redo(&(cursor_range, text.as_str().to_owned()))
                 {
                     text.replace_with(redo_txt);
@@ -1048,7 +1048,7 @@ fn events(
             } if modifiers.matches_logically(Modifiers::COMMAND) => {
                 if let Some((undo_ccursor_range, undo_txt)) = state
                     .undoer
-                    .lock()
+                    .borrow_mut()
                     .undo(&(cursor_range, text.as_str().to_owned()))
                 {
                     text.replace_with(undo_txt);
@@ -1149,7 +1149,7 @@ fn events(
 
     state.cursor.set_char_range(Some(cursor_range));
 
-    state.undoer.lock().feed_state(
+    state.undoer.borrow_mut().feed_state(
         ui.input(|i| i.time),
         &(cursor_range, text.as_str().to_owned()),
     );

@@ -5,7 +5,7 @@
 
 use eframe::{egui, egui_glow, glow};
 
-use egui::mutex::Mutex;
+use egui_mutex::SMutex;
 use std::sync::Arc;
 
 fn main() -> eframe::Result {
@@ -25,7 +25,7 @@ fn main() -> eframe::Result {
 
 struct MyApp {
     /// Behind an `Arc<Mutex<…>>` so we can pass it to [`egui::PaintCallback`] and paint later.
-    rotating_triangle: Arc<Mutex<RotatingTriangle>>,
+    rotating_triangle: Arc<SMutex<RotatingTriangle>>,
     angle: f32,
 }
 
@@ -36,7 +36,7 @@ impl MyApp {
             .as_ref()
             .expect("You need to run eframe with the glow backend");
         Self {
-            rotating_triangle: Arc::new(Mutex::new(RotatingTriangle::new(gl))),
+            rotating_triangle: Arc::new(SMutex::new(RotatingTriangle::new(gl))),
             angle: 0.0,
         }
     }

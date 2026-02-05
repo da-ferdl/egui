@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use emath::{Align2, Rot2};
 
@@ -16,7 +16,7 @@ pub struct TextShape {
     pub pos: Pos2,
 
     /// The laid out text, from [`FontsView::layout_job`].
-    pub galley: Arc<Galley>,
+    pub galley: Rc<Galley>,
 
     /// Add this underline to the whole text.
     /// You can also set an underline when creating the galley.
@@ -46,7 +46,7 @@ impl TextShape {
     ///
     /// Any non-placeholder color in the galley takes precedence over this fallback color.
     #[inline]
-    pub fn new(pos: Pos2, galley: Arc<Galley>, fallback_color: Color32) -> Self {
+    pub fn new(pos: Pos2, galley: Rc<Galley>, fallback_color: Color32) -> Self {
         Self {
             pos,
             galley,
@@ -131,7 +131,7 @@ impl TextShape {
             num_indices: _,
             pixels_per_point: _,
             intrinsic_size,
-        } = Arc::make_mut(galley);
+        } = Rc::make_mut(galley);
 
         *rect = transform.scaling * *rect;
         *mesh_bounds = transform.scaling * *mesh_bounds;
@@ -150,7 +150,7 @@ impl TextShape {
                 glyphs: _, // TODO(emilk): would it make sense to transform these?
                 size,
                 visuals,
-            } = Arc::make_mut(row);
+            } = Rc::make_mut(row);
 
             *size *= transform.scaling;
 

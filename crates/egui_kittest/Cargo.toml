@@ -36,6 +36,7 @@ x11 = ["eframe?/x11"]
 [dependencies]
 egui.workspace = true
 eframe = { workspace = true, optional = true }
+egui-mutex = { workspace = true }
 kittest.workspace = true
 serde.workspace = true
 toml.workspace = true

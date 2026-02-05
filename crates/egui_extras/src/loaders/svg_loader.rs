@@ -1,9 +1,6 @@
 use std::{
     mem::size_of,
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering::Relaxed},
-    },
+    sync::atomic::{AtomicU64, Ordering::Relaxed},
 };
 
 use ahash::HashMap;
@@ -11,17 +8,17 @@ use ahash::HashMap;
 use egui::{
     ColorImage,
     load::{BytesPoll, ImageLoadResult, ImageLoader, ImagePoll, LoadError, SizeHint},
-    mutex::Mutex,
 };
+use egui_mutex::SMutex;
 
 struct Entry {
     last_used: AtomicU64,
-    result: Result<Arc<ColorImage>, String>,
+    result: Result<ColorImage, String>,
 }
 
 pub struct SvgLoader {
     pass_index: AtomicU64,
-    cache: Mutex<HashMap<String, HashMap<SizeHint, Entry>>>,
+    cache: SMutex<HashMap<String, HashMap<SizeHint, Entry>>>,
     options: resvg::usvg::Options<'static>,
 }
 
@@ -44,7 +41,7 @@ impl Default for SvgLoader {
 
         Self {
             pass_index: AtomicU64::new(0),
-            cache: Mutex::new(HashMap::default()),
+            cache: SMutex::new(HashMap::default()),
             options,
         }
     }
@@ -76,8 +73,7 @@ impl ImageLoader for SvgLoader {
                 Ok(BytesPoll::Ready { bytes, .. }) => {
                     log::trace!("Started loading {uri:?}");
                     let result =
-                        crate::image::load_svg_bytes_with_size(&bytes, size_hint, &self.options)
-                            .map(Arc::new);
+                        crate::image::load_svg_bytes_with_size(&bytes, size_hint, &self.options);
 
                     log::trace!("Finished loading {uri:?}");
                     bucket.insert(

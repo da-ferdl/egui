@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, rc::Rc};
 
 use ecolor::Color32;
 use emath::{Pos2, Rect};
@@ -15,7 +15,7 @@ pub enum ColorMode {
     ///
     /// **This cannot be serialized**
     #[cfg_attr(feature = "serde", serde(skip))]
-    UV(Arc<dyn Fn(Rect, Pos2) -> Color32 + Send + Sync>),
+    UV(Rc<dyn Fn(Rect, Pos2) -> Color32>),
 }
 
 impl Default for ColorMode {

@@ -4,7 +4,8 @@
 use std::sync::Arc;
 
 use eframe::egui;
-use egui::{Id, InnerResponse, UiBuilder, ViewportBuilder, ViewportId, mutex::RwLock};
+use egui::{Id, InnerResponse, UiBuilder, ViewportBuilder, ViewportId};
+use egui_mutex::SMutex;
 
 // Drag-and-drop between windows is not yet implemented, but if you wanna work on it, enable this:
 pub const DRAG_AND_DROP_TEST: bool = false;
@@ -31,15 +32,15 @@ pub struct ViewportState {
     pub visible: bool,
     pub immediate: bool,
     pub title: String,
-    pub children: Vec<Arc<RwLock<Self>>>,
+    pub children: Vec<Arc<SMutex<Self>>>,
 }
 
 impl ViewportState {
     pub fn new_deferred(
         title: &'static str,
-        children: Vec<Arc<RwLock<Self>>>,
-    ) -> Arc<RwLock<Self>> {
-        Arc::new(RwLock::new(Self {
+        children: Vec<Arc<SMutex<Self>>>,
+    ) -> Arc<SMutex<Self>> {
+        Arc::new(SMutex::new(Self {
             id: ViewportId::from_hash_of(title),
             visible: false,
             immediate: false,
@@ -50,9 +51,9 @@ impl ViewportState {
 
     pub fn new_immediate(
         title: &'static str,
-        children: Vec<Arc<RwLock<Self>>>,
-    ) -> Arc<RwLock<Self>> {
-        Arc::new(RwLock::new(Self {
+        children: Vec<Arc<SMutex<Self>>>,
+    ) -> Arc<SMutex<Self>> {
+        Arc::new(SMutex::new(Self {
             id: ViewportId::from_hash_of(title),
             visible: false,
             immediate: true,
@@ -61,13 +62,13 @@ impl ViewportState {
         }))
     }
 
-    pub fn show(vp_state: Arc<RwLock<Self>>, ctx: &egui::Context, close_button: bool) {
-        if !vp_state.read().visible {
+    pub fn show(vp_state: Arc<SMutex<Self>>, ctx: &egui::Context, close_button: bool) {
+        if !vp_state.lock().visible {
             return;
         }
-        let vp_id = vp_state.read().id;
-        let immediate = vp_state.read().immediate;
-        let title = vp_state.read().title.clone();
+        let vp_id = vp_state.lock().id;
+        let immediate = vp_state.lock().immediate;
+        let title = vp_state.lock().title.clone();
 
         let viewport = ViewportBuilder::default()
             .with_title(&title)
@@ -75,7 +76,7 @@ impl ViewportState {
             .with_inner_size([500.0, 500.0]);
 
         if immediate {
-            let mut vp_state = vp_state.write();
+            let mut vp_state = vp_state.lock();
             ctx.show_viewport_immediate(vp_id, viewport, move |ui, class| {
                 if ui.input(|i| i.viewport().close_requested()) {
                     vp_state.visible = false;
@@ -85,17 +86,17 @@ impl ViewportState {
                 });
             });
         } else {
-            let count = Arc::new(RwLock::new(0));
+            let count = Arc::new(SMutex::new(0));
             ctx.show_viewport_deferred(vp_id, viewport, move |ui, class| {
-                let mut vp_state = vp_state.write();
+                let mut vp_state = vp_state.lock();
                 if ui.input(|i| i.viewport().close_requested()) {
                     vp_state.visible = false;
                 }
                 let count = Arc::clone(&count);
                 show_as_popup(ui, class, move |ui: &mut egui::Ui| {
-                    let current_count = *count.read();
+                    let current_count = *count.lock();
                     ui.label(format!("Callback has been reused {current_count} times"));
-                    *count.write() += 1;
+                    *count.lock() += 1;
 
                     generic_child_ui(ui, &mut vp_state, close_button);
                 });
@@ -106,13 +107,13 @@ impl ViewportState {
     pub fn set_visible_recursive(&mut self, visible: bool) {
         self.visible = visible;
         for child in &self.children {
-            child.write().set_visible_recursive(true);
+            child.lock().set_visible_recursive(true);
         }
     }
 }
 
 pub struct App {
-    top: Vec<Arc<RwLock<ViewportState>>>,
+    top: Vec<Arc<SMutex<ViewportState>>>,
     close_button: bool,
 }
 
@@ -161,7 +162,7 @@ impl eframe::App for App {
                 ui.checkbox(&mut embed_viewports, "Embed all viewports");
                 if ui.button("Open all viewports").clicked() {
                     for viewport in &self.top {
-                        viewport.write().set_visible_recursive(true);
+                        viewport.lock().set_visible_recursive(true);
                     }
                 }
                 ui.set_embed_viewports(embed_viewports);
@@ -201,7 +202,7 @@ fn generic_child_ui(ui: &mut egui::Ui, vp_state: &mut ViewportState, close_butto
     generic_ui(ui, &vp_state.children, close_button);
 }
 
-fn generic_ui(ui: &mut egui::Ui, children: &[Arc<RwLock<ViewportState>>], close_button: bool) {
+fn generic_ui(ui: &mut egui::Ui, children: &[Arc<SMutex<ViewportState>>], close_button: bool) {
     let container_id = ui.id();
 
     let ctx = ui.ctx().clone();
@@ -283,7 +284,7 @@ fn generic_ui(ui: &mut egui::Ui, children: &[Arc<RwLock<ViewportState>>], close_
 
         for child in children {
             let visible = {
-                let mut child_lock = child.write();
+                let mut child_lock = child.lock();
                 let ViewportState { visible, title, .. } = &mut *child_lock;
                 ui.checkbox(visible, title.as_str());
                 *visible
@@ -305,9 +306,9 @@ fn drag_and_drop_test(ui: &mut egui::Ui) {
     let container_id = ui.id();
 
     const COLS: usize = 2;
-    static DATA: OnceLock<RwLock<DragAndDrop>> = OnceLock::new();
+    static DATA: OnceLock<SMutex<DragAndDrop>> = OnceLock::new();
     let data = DATA.get_or_init(Default::default);
-    data.write().init(container_id);
+    data.lock().init(container_id);
 
     #[derive(Default)]
     struct DragAndDrop {
@@ -389,7 +390,7 @@ fn drag_and_drop_test(ui: &mut egui::Ui) {
             let mut is_dragged = None;
             let res = drop_target(ui, |ui| {
                 ui.set_min_height(60.0);
-                for (id, value) in data.read().cols(container_id, col) {
+                for (id, value) in data.lock().cols(container_id, col) {
                     drag_source(ui, id, |ui| {
                         ui.add(egui::Label::new(value).sense(egui::Sense::click()));
                         if ui.ctx().is_being_dragged(id) {
@@ -399,10 +400,10 @@ fn drag_and_drop_test(ui: &mut egui::Ui) {
                 }
             });
             if let Some(id) = is_dragged {
-                data.write().dragging(id);
+                data.lock().dragging(id);
             }
             if res.response.hovered() && ui.input(|i| i.pointer.any_released()) {
-                data.write().mov(container_id, col);
+                data.lock().mov(container_id, col);
             }
         }
     });

@@ -2,7 +2,7 @@ use super::CacheTrait;
 
 /// Something that does an expensive computation that we want to cache
 /// to save us from recomputing it each frame.
-pub trait ComputerMut<Key, Value>: 'static + Send + Sync {
+pub trait ComputerMut<Key, Value>: 'static {
     fn compute(&mut self, key: Key) -> Value;
 }
 
@@ -68,9 +68,7 @@ impl<Value, Computer> FrameCache<Value, Computer> {
     }
 }
 
-impl<Value: 'static + Send + Sync, Computer: 'static + Send + Sync> CacheTrait
-    for FrameCache<Value, Computer>
-{
+impl<Value: 'static, Computer: 'static> CacheTrait for FrameCache<Value, Computer> {
     fn update(&mut self) {
         self.evict_cache();
     }

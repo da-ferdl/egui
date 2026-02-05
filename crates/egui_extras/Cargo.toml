@@ -71,6 +71,7 @@ syntect = ["dep:syntect"]
 
 [dependencies]
 egui = { workspace = true, default-features = false }
+egui-mutex = { workspace = true }
 
 ahash.workspace = true
 enum-map.workspace = true

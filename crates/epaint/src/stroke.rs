@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, rc::Rc};
 
 use emath::GuiRounding as _;
 
@@ -150,11 +150,11 @@ impl PathStroke {
     #[inline]
     pub fn new_uv(
         width: impl Into<f32>,
-        callback: impl Fn(Rect, Pos2) -> Color32 + Send + Sync + 'static,
+        callback: impl Fn(Rect, Pos2) -> Color32 + 'static,
     ) -> Self {
         Self {
             width: width.into(),
-            color: ColorMode::UV(Arc::new(callback)),
+            color: ColorMode::UV(Rc::new(callback)),
             kind: StrokeKind::Middle,
         }
     }

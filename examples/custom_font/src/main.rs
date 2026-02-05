@@ -48,7 +48,7 @@ fn replace_fonts(ctx: &egui::Context) {
     // .ttf and .otf files supported.
     fonts.font_data.insert(
         "my_font".to_owned(),
-        std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+        std::rc::Rc::new(egui::FontData::from_static(include_bytes!(
             "../../../crates/epaint_default_fonts/fonts/Hack-Regular.ttf"
         ))),
     );

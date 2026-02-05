@@ -1,11 +1,4 @@
-use std::{
-    borrow::Cow,
-    collections::BTreeMap,
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering},
-    },
-};
+use std::{borrow::Cow, collections::BTreeMap, rc::Rc};
 
 use crate::{
     TextureAtlas,
@@ -97,7 +90,7 @@ pub enum FontFamily {
     /// FontFamily::Name("arial".into());
     /// FontFamily::Name("serif".into());
     /// ```
-    Name(Arc<str>),
+    Name(Rc<str>),
 }
 
 impl std::fmt::Display for FontFamily {
@@ -243,12 +236,12 @@ impl Default for FontTweak {
 
 // ----------------------------------------------------------------------------
 
-pub type Blob = Arc<dyn AsRef<[u8]> + Send + Sync>;
+pub type Blob = Rc<dyn AsRef<[u8]>>;
 
 fn blob_from_font_data(data: &FontData) -> Blob {
     match data.clone().font {
-        Cow::Borrowed(bytes) => Arc::new(bytes) as Blob,
-        Cow::Owned(bytes) => Arc::new(bytes) as Blob,
+        Cow::Borrowed(bytes) => Rc::new(bytes) as Blob,
+        Cow::Owned(bytes) => Rc::new(bytes) as Blob,
     }
 }
 
@@ -289,7 +282,7 @@ pub struct FontDefinitions {
     /// List of font names and their definitions.
     ///
     /// `epaint` has built-in-default for these, but you can override them if you like.
-    pub font_data: BTreeMap<String, Arc<FontData>>,
+    pub font_data: BTreeMap<String, Rc<FontData>>,
 
     /// Which fonts (names) to use for each [`FontFamily`].
     ///
@@ -356,19 +349,19 @@ impl Default for FontDefinitions {
     /// otherwise this is the same as [`Self::empty`].
     #[cfg(feature = "default_fonts")]
     fn default() -> Self {
-        let mut font_data: BTreeMap<String, Arc<FontData>> = BTreeMap::new();
+        let mut font_data: BTreeMap<String, Rc<FontData>> = BTreeMap::new();
 
         let mut families = BTreeMap::new();
 
         font_data.insert(
             "Hack".to_owned(),
-            Arc::new(FontData::from_static(HACK_REGULAR)),
+            Rc::new(FontData::from_static(HACK_REGULAR)),
         );
 
         // Some good looking emojis. Use as first priority:
         font_data.insert(
             "NotoEmoji-Regular".to_owned(),
-            Arc::new(FontData::from_static(NOTO_EMOJI_REGULAR).tweak(FontTweak {
+            Rc::new(FontData::from_static(NOTO_EMOJI_REGULAR).tweak(FontTweak {
                 scale: 0.81, // Make smaller
                 ..Default::default()
             })),
@@ -376,13 +369,13 @@ impl Default for FontDefinitions {
 
         font_data.insert(
             "Ubuntu-Light".to_owned(),
-            Arc::new(FontData::from_static(UBUNTU_LIGHT)),
+            Rc::new(FontData::from_static(UBUNTU_LIGHT)),
         );
 
         // Bigger emojis, and more. <http://jslegers.github.io/emoji-icon-font/>:
         font_data.insert(
             "emoji-icon-font".to_owned(),
-            Arc::new(FontData::from_static(EMOJI_ICON).tweak(FontTweak {
+            Rc::new(FontData::from_static(EMOJI_ICON).tweak(FontTweak {
                 scale: 0.90, // Make smaller
                 ..Default::default()
             })),
@@ -451,11 +444,21 @@ pub(crate) struct FontFaceKey(u64);
 impl FontFaceKey {
     pub const INVALID: Self = Self(0);
 
+    #[allow(unsafe_code)]
     fn new() -> Self {
-        static KEY_COUNTER: AtomicU64 = AtomicU64::new(1);
-        Self(crate::util::hash(
-            KEY_COUNTER.fetch_add(1, Ordering::Relaxed),
-        ))
+        static mut KEY_COUNTER: u64 = 1;
+
+        let current = unsafe { KEY_COUNTER };
+
+        unsafe {
+            if current == u64::MAX {
+                KEY_COUNTER = 1;
+            } else {
+                KEY_COUNTER += 1;
+            }
+        }
+
+        Self(crate::util::hash(current))
     }
 }
 
@@ -718,7 +721,7 @@ impl FontsView<'_> {
     ///
     /// The implementation uses memoization so repeated calls are cheap.
     #[inline]
-    pub fn layout_job(&mut self, job: LayoutJob) -> Arc<Galley> {
+    pub fn layout_job(&mut self, job: LayoutJob) -> Rc<Galley> {
         let allow_split_paragraphs = true; // Optimization for editing text with many paragraphs.
         self.galley_cache.layout(
             self.fonts,
@@ -750,7 +753,7 @@ impl FontsView<'_> {
         font_id: FontId,
         color: crate::Color32,
         wrap_width: f32,
-    ) -> Arc<Galley> {
+    ) -> Rc<Galley> {
         let job = LayoutJob::simple(text, font_id, color, wrap_width);
         self.layout_job(job)
     }
@@ -764,7 +767,7 @@ impl FontsView<'_> {
         text: String,
         font_id: FontId,
         color: crate::Color32,
-    ) -> Arc<Galley> {
+    ) -> Rc<Galley> {
         let job = LayoutJob::simple(text, font_id, color, f32::INFINITY);
         self.layout_job(job)
     }
@@ -778,7 +781,7 @@ impl FontsView<'_> {
         text: String,
         font_id: FontId,
         wrap_width: f32,
-    ) -> Arc<Galley> {
+    ) -> Rc<Galley> {
         self.layout(text, font_id, crate::Color32::PLACEHOLDER, wrap_width)
     }
 }
@@ -872,9 +875,9 @@ struct CachedGalley {
     /// Hashes of all other entries this one depends on for quick re-layout.
     /// Their `last_used`s should be updated alongside this one to make sure they're
     /// not evicted.
-    children: Option<Arc<[u64]>>,
+    children: Option<Rc<[u64]>>,
 
-    galley: Arc<Galley>,
+    galley: Rc<Galley>,
 }
 
 #[derive(Default)]
@@ -891,7 +894,7 @@ impl GalleyCache {
         mut job: LayoutJob,
         pixels_per_point: f32,
         allow_split_paragraphs: bool,
-    ) -> (u64, Arc<Galley>) {
+    ) -> (u64, Rc<Galley>) {
         if job.wrap.max_width.is_finite() {
             // Protect against rounding errors in egui layout code.
 
@@ -925,14 +928,14 @@ impl GalleyCache {
                 let cached = entry.into_mut();
                 cached.last_used = self.generation;
 
-                let galley = Arc::clone(&cached.galley);
+                let galley = Rc::clone(&cached.galley);
                 if let Some(children) = &cached.children {
                     // The point of `allow_split_paragraphs` is to split large jobs into paragraph,
                     // and then cache each paragraph individually.
                     // That way, if we edit a single paragraph, only that paragraph will be re-layouted.
                     // For that to work we need to keep all the child/paragraph
                     // galleys alive while the parent galley is alive:
-                    for child_hash in Arc::clone(children).iter() {
+                    for child_hash in Rc::clone(children).iter() {
                         if let Some(cached_child) = self.cache.get_mut(child_hash) {
                             cached_child.last_used = self.generation;
                         }
@@ -942,7 +945,7 @@ impl GalleyCache {
                 galley
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
-                let job = Arc::new(job);
+                let job = Rc::new(job);
                 if allow_split_paragraphs && should_cache_each_paragraph_individually(&job) {
                     let (child_galleys, child_hashes) =
                         self.layout_each_paragraph_individually(fonts, &job, pixels_per_point);
@@ -951,24 +954,24 @@ impl GalleyCache {
                         child_galleys.len(),
                         "Bug in `layout_each_paragraph_individually`"
                     );
-                    let galley = Arc::new(Galley::concat(job, &child_galleys, pixels_per_point));
+                    let galley = Rc::new(Galley::concat(job, &child_galleys, pixels_per_point));
 
                     self.cache.insert(
                         hash,
                         CachedGalley {
                             last_used: self.generation,
                             children: Some(child_hashes.into()),
-                            galley: Arc::clone(&galley),
+                            galley: Rc::clone(&galley),
                         },
                     );
                     galley
                 } else {
                     let galley = super::layout(fonts, pixels_per_point, job);
-                    let galley = Arc::new(galley);
+                    let galley = Rc::new(galley);
                     entry.insert(CachedGalley {
                         last_used: self.generation,
                         children: None,
-                        galley: Arc::clone(&galley),
+                        galley: Rc::clone(&galley),
                     });
                     galley
                 }
@@ -984,7 +987,7 @@ impl GalleyCache {
         pixels_per_point: f32,
         job: LayoutJob,
         allow_split_paragraphs: bool,
-    ) -> Arc<Galley> {
+    ) -> Rc<Galley> {
         self.layout_internal(fonts, job, pixels_per_point, allow_split_paragraphs)
             .1
     }
@@ -995,7 +998,7 @@ impl GalleyCache {
         fonts: &mut FontsImpl,
         job: &LayoutJob,
         pixels_per_point: f32,
-    ) -> (Vec<Arc<Galley>>, Vec<u64>) {
+    ) -> (Vec<Rc<Galley>>, Vec<u64>) {
         profiling::function_scope!();
 
         let mut current_section = 0;

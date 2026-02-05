@@ -1135,14 +1135,3 @@ impl ScissorRect {
         }
     }
 }
-
-// Look at the feature flag for an explanation.
-#[cfg(not(all(
-    target_arch = "wasm32",
-    not(feature = "fragile-send-sync-non-atomic-wasm"),
-)))]
-#[test]
-fn renderer_impl_send_sync() {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<Renderer>();
-}

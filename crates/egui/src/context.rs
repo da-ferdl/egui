@@ -1,13 +1,12 @@
 #![warn(missing_docs)] // Let's keep `Context` well-documented.
 
-use std::{borrow::Cow, cell::RefCell, panic::Location, sync::Arc, time::Duration};
+use std::{borrow::Cow, cell::RefCell, panic::Location, rc::Rc, sync::Arc, time::Duration};
 
 use emath::GuiRounding as _;
 use epaint::{
     ClippedPrimitive, ClippedShape, Color32, ImageData, Pos2, Rect, StrokeKind,
     TessellationOptions, TextureId, Vec2,
     emath::{self, TSTransform},
-    mutex::RwLock,
     stats::PaintStats,
     tessellator,
     text::{FontInsert, FontPriority, Fonts, FontsView},
@@ -57,7 +56,52 @@ pub struct RequestRepaintInfo {
     ///
     /// This can be compared to [`Context::cumulative_pass_nr`] to see if we we still
     /// need another repaint (ui pass / frame), or if one has already happened.
+    ///
+    /// Note: If the request is sent through the [`RepaintRequestProxy`] this
+    /// value can be zero.
     pub current_cumulative_pass_nr: u64,
+}
+
+/// Proxy to sent repaint requests from other threads then the UI thread.
+///
+/// Note: Always prefer the [`Context`] repaint methods and use this proxy only
+/// if you need to request repaints from other threads then the UI thread.
+///
+/// Sending a request with the proxy wakes up a sleeping UI thread.
+#[derive(Clone)]
+pub struct RepaintRequestProxy(Arc<dyn Fn(RequestRepaintInfo, Option<RepaintCause>) + Send + Sync>);
+impl RepaintRequestProxy {
+    /// Creates a new [`RepaintRequestProxy`] with the given callback.
+    pub fn new(
+        callback: Arc<dyn Fn(RequestRepaintInfo, Option<RepaintCause>) + Send + Sync>,
+    ) -> Self {
+        Self(callback)
+    }
+
+    /// Sends a repaint request for the ViewPort with the given [`ViewportId`].
+    pub fn request_repaint(&self, viewport_id: ViewportId) {
+        (self.0)(
+            RequestRepaintInfo {
+                viewport_id,
+                delay: Duration::ZERO,
+                current_cumulative_pass_nr: 0,
+            },
+            Some(RepaintCause::new()),
+        );
+    }
+
+    /// Sends a repaint request for the ViewPort with the given [`ViewportId`]
+    /// and the given delay.
+    pub fn request_repaint_after(&self, viewport_id: ViewportId, delay: Duration) {
+        (self.0)(
+            RequestRepaintInfo {
+                viewport_id,
+                delay,
+                current_cumulative_pass_nr: 0,
+            },
+            Some(RepaintCause::new()),
+        );
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -68,7 +112,7 @@ thread_local! {
 
 // ----------------------------------------------------------------------------
 
-struct WrappedTextureManager(Arc<RwLock<epaint::TextureManager>>);
+struct WrappedTextureManager(Rc<RefCell<epaint::TextureManager>>);
 
 impl Default for WrappedTextureManager {
     fn default() -> Self {
@@ -86,7 +130,7 @@ impl Default for WrappedTextureManager {
             "font id should be equal to TextureId::default(), but was {font_id:?}",
         );
 
-        Self(Arc::new(RwLock::new(tex_mngr)))
+        Self(Rc::new(RefCell::new(tex_mngr)))
     }
 }
 
@@ -113,11 +157,14 @@ impl ContextImpl {
             viewport.repaint.repaint_delay = Duration::ZERO;
             viewport.repaint.outstanding -= 1;
             if let Some(callback) = &self.request_repaint_callback {
-                (callback)(RequestRepaintInfo {
-                    viewport_id,
-                    delay: Duration::ZERO,
-                    current_cumulative_pass_nr: viewport.repaint.cumulative_pass_nr,
-                });
+                (callback)(
+                    RequestRepaintInfo {
+                        viewport_id,
+                        delay: Duration::ZERO,
+                        current_cumulative_pass_nr: viewport.repaint.cumulative_pass_nr,
+                    },
+                    None,
+                );
             }
         }
     }
@@ -159,11 +206,14 @@ impl ContextImpl {
             viewport.repaint.repaint_delay = delay;
 
             if let Some(callback) = &self.request_repaint_callback {
-                (callback)(RequestRepaintInfo {
-                    viewport_id,
-                    delay,
-                    current_cumulative_pass_nr: viewport.repaint.cumulative_pass_nr,
-                });
+                (callback)(
+                    RequestRepaintInfo {
+                        viewport_id,
+                        delay,
+                        current_cumulative_pass_nr: viewport.repaint.cumulative_pass_nr,
+                    },
+                    None,
+                );
             }
         }
     }
@@ -180,6 +230,25 @@ impl ContextImpl {
         self.viewports
             .get(viewport_id)
             .is_some_and(|v| 0 < v.repaint.outstanding || v.repaint.repaint_delay < Duration::MAX)
+    }
+
+    /// For integrations that use the [`RepaintRequestProxy`].
+    ///
+    /// Adjusts [`ViewportState`] for repaint requests that where received
+    /// from a [`RepaintRequestProxy`].
+    ///
+    /// Noop if there is no viewport for the given `viewport_id`.
+    fn adjust_viewport_state_for_repaint_proxy_event(
+        &mut self,
+        viewport_id: &ViewportId,
+        cause: RepaintCause,
+    ) {
+        let Some(viewport) = self.viewports.get_mut(viewport_id) else {
+            return;
+        };
+
+        viewport.repaint.outstanding = 1;
+        viewport.repaint.causes.push(cause);
     }
 }
 
@@ -395,7 +464,13 @@ struct ContextImpl {
 
     paint_stats: PaintStats,
 
-    request_repaint_callback: Option<Box<dyn Fn(RequestRepaintInfo) + Send + Sync>>,
+    /// The `Option<RepaintCause>` argument on the callback is set if the request
+    /// was sent through the [`RepaintRequestProxy`].
+    ///
+    /// Note: If the request was sent through the [`RepaintRequestProxy`], the
+    /// [`RequestRepaintInfo::current_cumulative_pass_nr`] value is `0`.
+    request_repaint_callback:
+        Option<Arc<dyn Fn(RequestRepaintInfo, Option<RepaintCause>) + Send + Sync>>,
 
     viewport_parents: ViewportIdMap<ViewportId>,
     viewports: ViewportIdMap<ViewportState>,
@@ -404,7 +479,7 @@ struct ContextImpl {
 
     is_accesskit_enabled: bool,
 
-    loaders: Arc<Loaders>,
+    loaders: Rc<Loaders>,
 }
 
 impl ContextImpl {
@@ -557,7 +632,7 @@ impl ContextImpl {
                 }
                 self.font_definitions
                     .font_data
-                    .insert(font.name, Arc::new(font.data));
+                    .insert(font.name, Rc::new(font.data));
             }
 
             log::trace!("Adding new fonts");
@@ -669,7 +744,7 @@ impl ContextImpl {
 /// ([`Context`] uses refcounting internally).
 ///
 /// ## Locking
-/// All methods are marked `&self`; [`Context`] has interior mutability protected by an [`RwLock`].
+/// All methods are marked `&self`; [`Context`] has interior mutability protected by a [`RefCell`].
 ///
 /// To access parts of a `Context` you need to use some of the helper functions that take closures:
 ///
@@ -711,7 +786,7 @@ impl ContextImpl {
 /// }
 /// ```
 #[derive(Clone)]
-pub struct Context(Arc<RwLock<ContextImpl>>);
+pub struct Context(Rc<RefCell<ContextImpl>>);
 
 impl std::fmt::Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -721,7 +796,7 @@ impl std::fmt::Debug for Context {
 
 impl std::cmp::PartialEq for Context {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
+        Rc::ptr_eq(&self.0, &other.0)
     }
 }
 
@@ -732,7 +807,7 @@ impl Default for Context {
             viewports: std::iter::once((ViewportId::ROOT, ViewportState::default())).collect(),
             ..Default::default()
         };
-        let ctx = Self(Arc::new(RwLock::new(ctx_impl)));
+        let ctx = Self(Rc::new(RefCell::new(ctx_impl)));
 
         ctx.add_plugin(plugin::CallbackPlugin::default());
 
@@ -748,12 +823,12 @@ impl Default for Context {
 impl Context {
     /// Do read-only (shared access) transaction on Context
     fn read<R>(&self, reader: impl FnOnce(&ContextImpl) -> R) -> R {
-        reader(&self.0.read())
+        reader(&self.0.borrow())
     }
 
     /// Do read-write (exclusive access) transaction on Context
     fn write<R>(&self, writer: impl FnOnce(&mut ContextImpl) -> R) -> R {
-        writer(&mut self.0.write())
+        writer(&mut self.0.borrow_mut())
     }
 
     /// Run the ui code for one frame.
@@ -1870,17 +1945,46 @@ impl Context {
         .unwrap_or_default()
     }
 
-    /// For integrations: this callback will be called when an egui user calls [`Self::request_repaint`] or [`Self::request_repaint_after`].
-    ///
-    /// This lets you wake up a sleeping UI thread.
+    /// For integrations: this callback will be called when an egui user calls [`Self::request_repaint`] or [`Self::request_repaint_after`]
+    /// and from [`RepaintRequestProxy::send`].
     ///
     /// Note that only one callback can be set. Any new call overrides the previous callback.
+    ///
+    /// If you need to send repaint requests from other threads then the UI thread use a
+    /// [`RepaintRequestProxy`] obtained from [`Self::get_repaint_request_proxy`]
     pub fn set_request_repaint_callback(
         &self,
-        callback: impl Fn(RequestRepaintInfo) + Send + Sync + 'static,
+        callback: impl Fn(RequestRepaintInfo, Option<RepaintCause>) + Send + Sync + 'static,
     ) {
-        let callback = Box::new(callback);
+        let callback = Arc::new(callback);
         self.write(|ctx| ctx.request_repaint_callback = Some(callback));
+    }
+
+    /// Returns a [`RepaintRequestProxy`] to send repaint requests from other threads then the UI thread,
+    /// if a request-repaint-callback was set with [`Self::set_request_repaint_callback`].
+    ///
+    /// Note: Always prefer the [`Context`] repaint methods and use the proxy only if you need to
+    /// request repaints from other threads then the UI thread.
+    ///
+    /// Returns `None` if no repaint callback is set currently.
+    pub fn get_repaint_request_proxy(&self) -> Option<RepaintRequestProxy> {
+        self.read(|ctx| ctx.request_repaint_callback.clone())
+            .map(|cb| RepaintRequestProxy::new(cb))
+    }
+
+    /// For integrations that use the [`RepaintRequestProxy`].
+    ///
+    /// To use on your integration when a repaint request from the proxy is received.
+    /// Adjusts the the `repaint.outstanding` and `repaint.causes` properties of the
+    /// [`ViewportState`] for the  for the given `viewport_id`.
+    ///
+    /// Noop if there is no viewport for the given `viewport_id`.
+    pub fn adjust_viewport_state_for_repaint_proxy_event(
+        &self,
+        viewport_id: &ViewportId,
+        cause: RepaintCause,
+    ) {
+        self.write(|ctx| ctx.adjust_viewport_state_for_repaint_proxy_event(viewport_id, cause));
     }
 
     /// Request to discard the visual output of this pass,
@@ -1964,10 +2068,10 @@ impl Context {
     pub fn add_plugin(&self, plugin: impl plugin::Plugin + 'static) {
         let handle = plugin::PluginHandle::new(plugin);
 
-        let added = self.write(|ctx| ctx.plugins.add(Arc::clone(&handle)));
+        let added = self.write(|ctx| ctx.plugins.add(Rc::clone(&handle)));
 
         if added {
-            handle.lock().dyn_plugin_mut().setup(self);
+            handle.borrow_mut().dyn_plugin_mut().setup(self);
         }
     }
 
@@ -1979,7 +2083,7 @@ impl Context {
         f: impl FnOnce(&mut T) -> R,
     ) -> Option<R> {
         let plugin = self.read(|ctx| ctx.plugins.get(std::any::TypeId::of::<T>()));
-        plugin.map(|plugin| f(plugin.lock().typed_plugin_mut()))
+        plugin.map(|plugin| f(plugin.borrow_mut().typed_plugin_mut()))
     }
 
     /// Get a handle to the plugin of type `T`.
@@ -2089,14 +2193,14 @@ impl Context {
     }
 
     /// The currently active [`Style`] used by all subsequent popups, menus, etc.
-    pub fn global_style(&self) -> Arc<Style> {
-        self.options(|opt| Arc::clone(opt.style()))
+    pub fn global_style(&self) -> Rc<Style> {
+        self.options(|opt| Rc::clone(opt.style()))
     }
 
     /// The currently active [`Style`] used by all subsequent popups, menus, etc.
     #[deprecated = "Renamed to `global_style` to avoid confusion with `ui.style()`"]
-    pub fn style(&self) -> Arc<Style> {
-        self.options(|opt| Arc::clone(opt.style()))
+    pub fn style(&self) -> Rc<Style> {
+        self.options(|opt| Rc::clone(opt.style()))
     }
 
     /// Mutate the currently active [`Style`] used by all subsequent popups, menus, etc.
@@ -2110,7 +2214,7 @@ impl Context {
     /// });
     /// ```
     pub fn global_style_mut(&self, mutate_style: impl FnOnce(&mut Style)) {
-        self.options_mut(|opt| mutate_style(Arc::make_mut(opt.style_mut())));
+        self.options_mut(|opt| mutate_style(Rc::make_mut(opt.style_mut())));
     }
 
     /// Mutate the currently active [`Style`] used by all subsequent popups, menus, etc.
@@ -2125,7 +2229,7 @@ impl Context {
     /// ```
     #[deprecated = "Renamed to `global_style_mut` to avoid confusion with `ui.style_mut()`"]
     pub fn style_mut(&self, mutate_style: impl FnOnce(&mut Style)) {
-        self.options_mut(|opt| mutate_style(Arc::make_mut(opt.style_mut())));
+        self.options_mut(|opt| mutate_style(Rc::make_mut(opt.style_mut())));
     }
 
     /// The currently active [`Style`] used by all new popups, menus, etc.
@@ -2135,7 +2239,7 @@ impl Context {
     /// You can also change this using [`Self::global_style_mut`].
     ///
     /// You can use [`Ui::style_mut`] to change the style of a single [`Ui`].
-    pub fn set_global_style(&self, style: impl Into<Arc<Style>>) {
+    pub fn set_global_style(&self, style: impl Into<Rc<Style>>) {
         self.options_mut(|opt| *opt.style_mut() = style.into());
     }
 
@@ -2147,7 +2251,7 @@ impl Context {
     ///
     /// You can use [`Ui::style_mut`] to change the style of a single [`Ui`].
     #[deprecated = "Renamed to `set_global_style` to avoid confusion with `ui.set_style()`"]
-    pub fn set_style(&self, style: impl Into<Arc<Style>>) {
+    pub fn set_style(&self, style: impl Into<Rc<Style>>) {
         self.options_mut(|opt| *opt.style_mut() = style.into());
     }
 
@@ -2162,16 +2266,16 @@ impl Context {
     /// ```
     pub fn all_styles_mut(&self, mut mutate_style: impl FnMut(&mut Style)) {
         self.options_mut(|opt| {
-            mutate_style(Arc::make_mut(&mut opt.dark_style));
-            mutate_style(Arc::make_mut(&mut opt.light_style));
+            mutate_style(Rc::make_mut(&mut opt.dark_style));
+            mutate_style(Rc::make_mut(&mut opt.light_style));
         });
     }
 
     /// The [`Style`] used by all subsequent popups, menus, etc.
-    pub fn style_of(&self, theme: Theme) -> Arc<Style> {
+    pub fn style_of(&self, theme: Theme) -> Rc<Style> {
         self.options(|opt| match theme {
-            Theme::Dark => Arc::clone(&opt.dark_style),
-            Theme::Light => Arc::clone(&opt.light_style),
+            Theme::Dark => Rc::clone(&opt.dark_style),
+            Theme::Light => Rc::clone(&opt.light_style),
         })
     }
 
@@ -2186,8 +2290,8 @@ impl Context {
     /// ```
     pub fn style_mut_of(&self, theme: Theme, mutate_style: impl FnOnce(&mut Style)) {
         self.options_mut(|opt| match theme {
-            Theme::Dark => mutate_style(Arc::make_mut(&mut opt.dark_style)),
-            Theme::Light => mutate_style(Arc::make_mut(&mut opt.light_style)),
+            Theme::Dark => mutate_style(Rc::make_mut(&mut opt.dark_style)),
+            Theme::Light => mutate_style(Rc::make_mut(&mut opt.light_style)),
         });
     }
 
@@ -2197,7 +2301,7 @@ impl Context {
     /// You can also change this using [`Self::style_mut_of`].
     ///
     /// You can use [`Ui::style_mut`] to change the style of a single [`Ui`].
-    pub fn set_style_of(&self, theme: Theme, style: impl Into<Arc<Style>>) {
+    pub fn set_style_of(&self, theme: Theme, style: impl Into<Rc<Style>>) {
         let style = style.into();
         self.options_mut(|opt| match theme {
             Theme::Dark => opt.dark_style = style,
@@ -2355,7 +2459,7 @@ impl Context {
             max_texture_side
         );
         let tex_mngr = self.tex_manager();
-        let tex_id = tex_mngr.write().alloc(name, image, options);
+        let tex_id = tex_mngr.borrow_mut().alloc(name, image, options);
         TextureHandle::new(tex_mngr, tex_id)
     }
 
@@ -2364,8 +2468,8 @@ impl Context {
     /// In general it is easier to use [`Self::load_texture`] and [`TextureHandle`].
     ///
     /// You can show stats about the allocated textures using [`Self::texture_ui`].
-    pub fn tex_manager(&self) -> Arc<RwLock<epaint::textures::TextureManager>> {
-        self.read(|ctx| Arc::clone(&ctx.tex_manager.0))
+    pub fn tex_manager(&self) -> Rc<RefCell<epaint::textures::TextureManager>> {
+        self.read(|ctx| Rc::clone(&ctx.tex_manager.0))
     }
 
     // ---------------------------------------------------------------------
@@ -2585,7 +2689,7 @@ impl ContextImpl {
         self.memory.end_pass(&viewport.this_pass.used_ids);
 
         if let Some(fonts) = self.fonts.as_mut() {
-            let tex_mngr = &mut self.tex_manager.0.write();
+            let tex_mngr = &mut self.tex_manager.0.borrow_mut();
             if let Some(font_image_delta) = fonts.font_image_delta() {
                 // A partial font atlas update, e.g. a new glyph has been entered.
                 tex_mngr.set(TextureId::default(), font_image_delta);
@@ -2593,7 +2697,7 @@ impl ContextImpl {
         }
 
         // Inform the backend of all textures that have been updated (including font atlas).
-        let textures_delta = self.tex_manager.0.write().take_delta();
+        let textures_delta = self.tex_manager.0.borrow_mut().take_delta();
 
         let mut platform_output: PlatformOutput = std::mem::take(&mut viewport.output);
 
@@ -3264,7 +3368,7 @@ impl Context {
             ui.collapsing(name, |ui| {
                 let mut tweak = data.tweak;
                 if tweak.ui(ui).changed() {
-                    Arc::make_mut(data).tweak = tweak;
+                    Rc::make_mut(data).tweak = tweak;
                     changed = true;
                 }
             });
@@ -3404,7 +3508,7 @@ impl Context {
     /// Show stats about the allocated textures.
     pub fn texture_ui(&self, ui: &mut crate::Ui) {
         let tex_mngr = self.tex_manager();
-        let tex_mngr = tex_mngr.read();
+        let tex_mngr = tex_mngr.borrow();
 
         let mut textures: Vec<_> = tex_mngr.allocated().collect();
         textures.sort_by_key(|(id, _)| *id);
@@ -3482,19 +3586,19 @@ impl Context {
                 texture,
             } = loaders.as_ref();
 
-            for loader in bytes.lock().iter() {
+            for loader in bytes.borrow().iter() {
                 byte_loaders.push(LoaderInfo {
                     id: loader.id().to_owned(),
                     byte_size: loader.byte_size(),
                 });
             }
-            for loader in image.lock().iter() {
+            for loader in image.borrow().iter() {
                 image_loaders.push(LoaderInfo {
                     id: loader.id().to_owned(),
                     byte_size: loader.byte_size(),
                 });
             }
-            for loader in texture.lock().iter() {
+            for loader in texture.borrow().iter() {
                 texture_loaders.push(LoaderInfo {
                     id: loader.id().to_owned(),
                     byte_size: loader.byte_size(),
@@ -3690,9 +3794,9 @@ impl Context {
     pub fn is_loader_installed(&self, id: &str) -> bool {
         let loaders = self.loaders();
 
-        loaders.bytes.lock().iter().any(|l| l.id() == id)
-            || loaders.image.lock().iter().any(|l| l.id() == id)
-            || loaders.texture.lock().iter().any(|l| l.id() == id)
+        loaders.bytes.borrow().iter().any(|l| l.id() == id)
+            || loaders.image.borrow().iter().any(|l| l.id() == id)
+            || loaders.texture.borrow().iter().any(|l| l.id() == id)
     }
 
     /// Add a new bytes loader.
@@ -3700,8 +3804,8 @@ impl Context {
     /// It will be tried first, before any already installed loaders.
     ///
     /// See [`load`] for more information.
-    pub fn add_bytes_loader(&self, loader: Arc<dyn load::BytesLoader + Send + Sync + 'static>) {
-        self.loaders().bytes.lock().push(loader);
+    pub fn add_bytes_loader(&self, loader: Rc<dyn load::BytesLoader + Send + Sync + 'static>) {
+        self.loaders().bytes.borrow_mut().push(loader);
     }
 
     /// Add a new image loader.
@@ -3709,8 +3813,8 @@ impl Context {
     /// It will be tried first, before any already installed loaders.
     ///
     /// See [`load`] for more information.
-    pub fn add_image_loader(&self, loader: Arc<dyn load::ImageLoader + Send + Sync + 'static>) {
-        self.loaders().image.lock().push(loader);
+    pub fn add_image_loader(&self, loader: Rc<dyn load::ImageLoader + Send + Sync + 'static>) {
+        self.loaders().image.borrow_mut().push(loader);
     }
 
     /// Add a new texture loader.
@@ -3718,8 +3822,8 @@ impl Context {
     /// It will be tried first, before any already installed loaders.
     ///
     /// See [`load`] for more information.
-    pub fn add_texture_loader(&self, loader: Arc<dyn load::TextureLoader + Send + Sync + 'static>) {
-        self.loaders().texture.lock().push(loader);
+    pub fn add_texture_loader(&self, loader: Rc<dyn load::TextureLoader + Send + Sync + 'static>) {
+        self.loaders().texture.borrow_mut().push(loader);
     }
 
     /// Release all memory and textures related to the given image URI.
@@ -3734,13 +3838,13 @@ impl Context {
         let loaders = self.loaders();
 
         loaders.include.forget(uri);
-        for loader in loaders.bytes.lock().iter() {
+        for loader in loaders.bytes.borrow().iter() {
             loader.forget(uri);
         }
-        for loader in loaders.image.lock().iter() {
+        for loader in loaders.image.borrow().iter() {
             loader.forget(uri);
         }
-        for loader in loaders.texture.lock().iter() {
+        for loader in loaders.texture.borrow().iter() {
             loader.forget(uri);
         }
     }
@@ -3756,13 +3860,13 @@ impl Context {
         let loaders = self.loaders();
 
         loaders.include.forget_all();
-        for loader in loaders.bytes.lock().iter() {
+        for loader in loaders.bytes.borrow().iter() {
             loader.forget_all();
         }
-        for loader in loaders.image.lock().iter() {
+        for loader in loaders.image.borrow().iter() {
             loader.forget_all();
         }
-        for loader in loaders.texture.lock().iter() {
+        for loader in loaders.texture.borrow().iter() {
             loader.forget_all();
         }
     }
@@ -3789,7 +3893,7 @@ impl Context {
         profiling::function_scope!(uri);
 
         let loaders = self.loaders();
-        let bytes_loaders = loaders.bytes.lock();
+        let bytes_loaders = loaders.bytes.borrow();
 
         // Try most recently added loaders first (hence `.rev()`)
         for loader in bytes_loaders.iter().rev() {
@@ -3827,7 +3931,7 @@ impl Context {
         profiling::function_scope!(uri);
 
         let loaders = self.loaders();
-        let image_loaders = loaders.image.lock();
+        let image_loaders = loaders.image.borrow();
         if image_loaders.is_empty() {
             return Err(load::LoadError::NoImageLoaders);
         }
@@ -3877,7 +3981,7 @@ impl Context {
         profiling::function_scope!(uri);
 
         let loaders = self.loaders();
-        let texture_loaders = loaders.texture.lock();
+        let texture_loaders = loaders.texture.borrow();
 
         // Try most recently added loaders first (hence `.rev()`)
         for loader in texture_loaders.iter().rev() {
@@ -3891,15 +3995,15 @@ impl Context {
     }
 
     /// The loaders of bytes, images, and textures.
-    pub fn loaders(&self) -> Arc<Loaders> {
-        self.read(|this| Arc::clone(&this.loaders))
+    pub fn loaders(&self) -> Rc<Loaders> {
+        self.read(|this| Rc::clone(&this.loaders))
     }
 
     /// Returns `true` if any image is currently being loaded.
     pub fn has_pending_images(&self) -> bool {
         self.read(|this| {
-            this.loaders.image.lock().iter().any(|i| i.has_pending())
-                || this.loaders.bytes.lock().iter().any(|i| i.has_pending())
+            this.loaders.image.borrow().iter().any(|i| i.has_pending())
+                || this.loaders.bytes.borrow().iter().any(|i| i.has_pending())
         })
     }
 }
@@ -4228,12 +4332,6 @@ impl Context {
         let dragged = self.dragged_id();
         dragged.is_some() && dragged != Some(not_this)
     }
-}
-
-#[test]
-fn context_impl_send_sync() {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<Context>();
 }
 
 #[cfg(test)]

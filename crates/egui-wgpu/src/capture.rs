@@ -186,6 +186,8 @@ impl CaptureState {
         tx: CaptureSender,
         viewport_id: ViewportId,
     ) {
+        let repaint_request_proxy = ctx.get_repaint_request_proxy();
+
         #[allow(clippy::allow_attributes, clippy::arc_with_non_send_sync)] // For wasm
         let buffer = Arc::new(buffer);
         let buffer_clone = Arc::clone(&buffer);
@@ -236,7 +238,15 @@ impl CaptureState {
                 ),
             ))
             .ok();
-            ctx.request_repaint();
+
+            match &repaint_request_proxy {
+                Some(proxy) => proxy.request_repaint(viewport_id),
+                None => {
+                    log::warn!(
+                        "Cannot send a repaint request because no repaint proxy is available"
+                    );
+                }
+            };
         });
     }
 }

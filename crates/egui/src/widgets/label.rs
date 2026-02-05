@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{
     Align, Direction, FontSelection, Galley, Pos2, Response, Sense, Stroke, TextWrapMode, Ui,
@@ -137,7 +137,7 @@ impl Label {
 
 impl Label {
     /// Do layout and position the galley in the ui, without painting it or adding widget info.
-    pub fn layout_in_ui(self, ui: &mut Ui) -> (Pos2, Arc<Galley>, Response) {
+    pub fn layout_in_ui(self, ui: &mut Ui) -> (Pos2, Rc<Galley>, Response) {
         let selectable = self
             .selectable
             .unwrap_or_else(|| ui.style().interaction.selectable_labels);
@@ -180,7 +180,7 @@ impl Label {
         }
 
         let valign = ui.text_valign();
-        let mut layout_job = Arc::unwrap_or_clone(self.text.into_layout_job(
+        let mut layout_job = Rc::unwrap_or_clone(self.text.into_layout_job(
             ui.style(),
             FontSelection::Default,
             valign,
