@@ -20,6 +20,9 @@ all-features = true
 rustdoc-args = ["--generate-link-to-definition"]
 
 [features]
+
+default = ["snapshot"]
+
 ## Adds a wgpu-based test renderer.
 wgpu = ["dep:egui-wgpu", "dep:pollster", "dep:image", "dep:wgpu", "eframe?/wgpu"]
 
