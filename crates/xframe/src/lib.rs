@@ -50,10 +50,6 @@
 // Re-export all useful libraries:
 pub use {egui, egui::emath, egui::epaint};
 
-#[cfg(feature = "glow")]
-pub use {egui_glow, glow};
-
-#[cfg(feature = "wgpu_no_default_features")]
 pub use {egui_wgpu, wgpu};
 
 mod epi;

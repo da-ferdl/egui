@@ -72,7 +72,7 @@ impl crate::View for ClipboardTest {
                 ui.ctx().try_load_image(&uri, Default::default())
                 && ui.button("📋").clicked()
             {
-                ui.copy_image(image);
+                ui.copy_image((*image).clone());
             }
         });
 

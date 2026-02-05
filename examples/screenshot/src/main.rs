@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 #![expect(rustdoc::missing_crate_level_docs, clippy::unwrap_used)] // it's an example
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use eframe::egui::{self, ColorImage};
 
@@ -22,7 +22,7 @@ fn main() -> eframe::Result {
 struct MyApp {
     continuously_take_screenshots: bool,
     texture: Option<egui::TextureHandle>,
-    screenshot: Option<ColorImage>,
+    screenshot: Option<Arc<ColorImage>>,
     save_to_file: bool,
 }
 
@@ -32,7 +32,7 @@ impl eframe::App for MyApp {
             if let Some(screenshot) = self.screenshot.take() {
                 self.texture = Some(ui.ctx().load_texture(
                     "screenshot",
-                    Rc::new(screenshot),
+                    screenshot,
                     Default::default(),
                 ));
             }
@@ -75,8 +75,6 @@ impl eframe::App for MyApp {
             ui.input(|i| {
                 for event in &i.raw.events {
                     if let egui::Event::Screenshot { image, .. } = event {
-                        let image = image.clone();
-
                         if self.save_to_file {
                             let pixels_per_point = i.pixels_per_point();
                             let region = egui::Rect::from_two_pos(
@@ -94,7 +92,7 @@ impl eframe::App for MyApp {
                             .unwrap();
                             self.save_to_file = false;
                         }
-                        self.screenshot = Some(image);
+                        self.screenshot = Some(Arc::clone(image));
                     }
                 }
             });

@@ -12,13 +12,13 @@ workspace = true
 
 
 [dependencies]
-eframe = { workspace = true, features = [
+eframe = { git = "https://github.com/emilk/egui", branch = "main", features = [
   "default",
   "persistence",
   "__screenshot", # __screenshot is so we can dump a screenshot using EFRAME_SCREENSHOT_TO
 ] }
 
 # For image support:
-egui_extras = { workspace = true, features = ["default", "image", "serde"] }
+egui_extras = { git = "https://github.com/emilk/egui", branch = "main", features = ["default", "image", "serde"] }
 
 env_logger = { workspace = true, features = ["auto-color", "humantime"] }

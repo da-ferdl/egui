@@ -34,15 +34,14 @@ x11 = ["eframe?/x11"]
 
 
 [dependencies]
-egui.workspace = true
-eframe = { workspace = true, optional = true }
-egui-mutex = { workspace = true }
+egui = { git = "https://github.com/emilk/egui", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui", branch = "main", optional = true }
 kittest.workspace = true
 serde.workspace = true
 toml.workspace = true
 
 # wgpu dependencies
-egui-wgpu = { workspace = true, optional = true }
+egui-wgpu = { git = "https://github.com/emilk/egui", branch = "main", optional = true }
 pollster = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
 # Enable DX12 because it always comes with a software rasterizer.
@@ -60,9 +59,9 @@ open = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 
 [dev-dependencies]
-egui = { workspace = true, features = ["default_fonts"] }
+egui = { git = "https://github.com/emilk/egui", branch = "main", features = ["default_fonts"] }
 image = { workspace = true, features = ["png"] }
-egui_extras = { workspace = true, features = ["image", "http"] }
+egui_extras = { git = "https://github.com/emilk/egui", branch = "main", features = ["image", "http"] }
 
 [lints]
 workspace = true

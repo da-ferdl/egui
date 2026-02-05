@@ -44,8 +44,8 @@ x11 = ["winit?/x11"]
 
 
 [dependencies]
-egui = { workspace = true, default-features = false, features = ["bytemuck"] }
-egui-winit = { workspace = true, optional = true, default-features = false }
+egui = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["bytemuck"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", optional = true, default-features = false }
 
 bytemuck.workspace = true
 glow.workspace = true

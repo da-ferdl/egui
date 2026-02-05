@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::{Demo, View};
 
@@ -521,7 +521,7 @@ fn ui_stack_demo(ui: &mut Ui) {
                         with various information.\n\nThis is how the stack looks like here:",
         );
     });
-    let stack = Rc::clone(ui.stack());
+    let stack = Arc::clone(ui.stack());
     egui::Frame::new()
         .inner_margin(ui.spacing().menu_margin)
         .stroke(ui.visuals().widgets.noninteractive.bg_stroke)

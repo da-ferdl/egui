@@ -88,7 +88,7 @@ impl Custom3d {
         // `paint_callback_resources` type map, which is stored alongside the render pass.
         wgpu_render_state
             .renderer
-            .lock()
+            .write()
             .callback_resources
             .insert(TriangleRenderResources {
                 pipeline,

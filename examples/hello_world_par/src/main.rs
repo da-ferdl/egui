@@ -1,6 +1,4 @@
 //! This example shows that you can use egui in parallel from multiple threads.
-//!
-//! ATTENTION: Does not work on this branch with non Send / Sync context
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 #![expect(clippy::unwrap_used)] // it's an example
@@ -23,8 +21,7 @@ fn main() -> eframe::Result {
     )
 }
 
-// -> not possible with non Send / Sync Context
-/*// State per thread.
+/// State per thread.
 struct ThreadState {
     thread_nr: usize,
     title: String,
@@ -59,10 +56,9 @@ impl ThreadState {
                 ui.label(format!("Hello '{}', age {}", self.name, self.age));
             });
     }
-}*/
+}
 
-// -> not possible with non Send / Sync Context
-/*fn new_worker(
+fn new_worker(
     thread_nr: usize,
     on_done_tx: mpsc::SyncSender<()>,
 ) -> (JoinHandle<()>, mpsc::SyncSender<egui::Context>) {
@@ -78,38 +74,36 @@ impl ThreadState {
         })
         .expect("failed to spawn thread");
     (handle, show_tx)
-}*/
+}
 
 struct MyApp {
     threads: Vec<(JoinHandle<()>, mpsc::SyncSender<egui::Context>)>,
-    //on_done_tx: mpsc::SyncSender<()>,
+    on_done_tx: mpsc::SyncSender<()>,
     on_done_rc: mpsc::Receiver<()>,
 }
 
 impl MyApp {
     fn new() -> Self {
         let threads = Vec::with_capacity(3);
-        let (_, on_done_rc) = mpsc::sync_channel(0);
+        let (on_done_tx, on_done_rc) = mpsc::sync_channel(0);
 
-        let slf = Self {
+        let mut slf = Self {
             threads,
-            //on_done_tx,
+            on_done_tx,
             on_done_rc,
         };
 
-        // -> not possible with non Send / Sync Context
-        /*slf.spawn_thread();
-        slf.spawn_thread();*/
+        slf.spawn_thread();
+        slf.spawn_thread();
 
         slf
     }
 
-    // -> not possible with non Send / Sync Context
-    /*fn spawn_thread(&mut self) {
+    fn spawn_thread(&mut self) {
         let thread_nr = self.threads.len();
         self.threads
             .push(new_worker(thread_nr, self.on_done_tx.clone()));
-    }*/
+    }
 }
 
 impl std::ops::Drop for MyApp {
@@ -124,13 +118,9 @@ impl std::ops::Drop for MyApp {
 impl eframe::App for MyApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         egui::Window::new("Main thread").show(ui.ctx(), |ui| {
-            ui.add_space(20.);
-
-            ui.label("This example does not work on this branch with non Send / Sync Context");
-
-            /*if ui.button("Spawn another thread").clicked() {
+            if ui.button("Spawn another thread").clicked() {
                 self.spawn_thread();
-            }*/
+            }
         });
 
         for (_handle, show_tx) in &self.threads {

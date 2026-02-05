@@ -1145,7 +1145,6 @@ name = "custom_3d_glow"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui-mutex",
  "env_logger",
 ]
 
@@ -1170,7 +1169,7 @@ name = "custom_keypad"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui_extras",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "env_logger",
 ]
 
@@ -1179,8 +1178,8 @@ name = "custom_style"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui_demo_lib",
- "egui_extras",
+ "egui_demo_lib 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "env_logger",
  "image",
 ]
@@ -1309,22 +1308,33 @@ dependencies = [
  "cint",
  "color-hex",
  "document-features",
- "emath",
+ "emath 0.33.3",
+ "serde",
+]
+
+[[package]]
+name = "ecolor"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "bytemuck",
+ "color-hex",
+ "emath 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "serde",
 ]
 
 [[package]]
 name = "eframe"
 version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
 dependencies = [
  "ahash",
  "bytemuck",
- "directories",
  "document-features",
- "egui",
- "egui-wgpu",
- "egui-winit",
- "egui_glow",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui-wgpu 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui-winit 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_glow 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "glow",
  "glutin",
  "glutin-winit",
@@ -1361,8 +1371,28 @@ dependencies = [
  "backtrace",
  "bitflags 2.10.0",
  "document-features",
- "emath",
- "epaint",
+ "emath 0.33.3",
+ "epaint 0.33.3",
+ "log",
+ "nohash-hasher",
+ "profiling",
+ "ron",
+ "serde",
+ "smallvec",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "egui"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "accesskit",
+ "ahash",
+ "backtrace",
+ "bitflags 2.10.0",
+ "emath 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "epaint 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "log",
  "nohash-hasher",
  "profiling",
@@ -1386,9 +1416,28 @@ dependencies = [
  "ahash",
  "bytemuck",
  "document-features",
- "egui",
+ "egui 0.33.3",
  "egui-mutex",
- "epaint",
+ "epaint 0.33.3",
+ "log",
+ "profiling",
+ "thiserror 2.0.18",
+ "type-map",
+ "web-time",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "egui-wgpu"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "ahash",
+ "bytemuck",
+ "document-features",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "epaint 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "log",
  "profiling",
  "thiserror 2.0.18",
@@ -1406,7 +1455,7 @@ dependencies = [
  "arboard",
  "bytemuck",
  "document-features",
- "egui",
+ "egui 0.33.3",
  "log",
  "objc2 0.5.2",
  "objc2-foundation 0.2.2",
@@ -1422,6 +1471,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-winit"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "accesskit_winit",
+ "arboard",
+ "bytemuck",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "log",
+ "objc2 0.5.2",
+ "objc2-foundation 0.2.2",
+ "objc2-ui-kit",
+ "profiling",
+ "raw-window-handle",
+ "serde",
+ "smithay-clipboard",
+ "web-time",
+ "webbrowser",
+ "winit",
+]
+
+[[package]]
 name = "egui_demo_app"
 version = "0.33.3"
 dependencies = [
@@ -1430,10 +1501,10 @@ dependencies = [
  "bytemuck",
  "chrono",
  "eframe",
- "egui",
- "egui_demo_lib",
- "egui_extras",
- "egui_kittest",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_demo_lib 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_kittest 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "ehttp",
  "env_logger",
  "image",
@@ -1458,12 +1529,24 @@ dependencies = [
  "chrono",
  "criterion",
  "document-features",
- "egui",
- "egui_extras",
- "egui_kittest",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_kittest 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "image",
  "mimalloc",
  "rand 0.9.2",
+ "serde",
+ "unicode_names2",
+]
+
+[[package]]
+name = "egui_demo_lib"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "chrono",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "serde",
  "unicode_names2",
 ]
@@ -1475,8 +1558,27 @@ dependencies = [
  "ahash",
  "chrono",
  "document-features",
- "egui",
+ "egui 0.33.3",
  "egui-mutex",
+ "ehttp",
+ "enum-map",
+ "image",
+ "log",
+ "mime_guess2",
+ "profiling",
+ "resvg",
+ "serde",
+ "syntect",
+]
+
+[[package]]
+name = "egui_extras"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "ahash",
+ "chrono",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "ehttp",
  "enum-map",
  "image",
@@ -1494,11 +1596,27 @@ version = "0.33.3"
 dependencies = [
  "bytemuck",
  "document-features",
- "egui",
- "egui-winit",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui-winit 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "glow",
  "glutin",
  "glutin-winit",
+ "log",
+ "memoffset",
+ "profiling",
+ "wasm-bindgen",
+ "web-sys",
+ "winit",
+]
+
+[[package]]
+name = "egui_glow"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "bytemuck",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "glow",
  "log",
  "memoffset",
  "profiling",
@@ -1514,10 +1632,28 @@ dependencies = [
  "dify",
  "document-features",
  "eframe",
- "egui",
- "egui-mutex",
- "egui-wgpu",
- "egui_extras",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui-wgpu 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "image",
+ "kittest",
+ "open",
+ "pollster",
+ "serde",
+ "tempfile",
+ "toml",
+ "wgpu",
+]
+
+[[package]]
+name = "egui_kittest"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "dify",
+ "eframe",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui-wgpu 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "image",
  "kittest",
  "open",
@@ -1532,9 +1668,9 @@ dependencies = [
 name = "egui_tests"
 version = "0.33.3"
 dependencies = [
- "egui",
- "egui_extras",
- "egui_kittest",
+ "egui 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_kittest 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "image",
 ]
 
@@ -1565,6 +1701,15 @@ dependencies = [
  "bytemuck",
  "document-features",
  "mint",
+ "serde",
+]
+
+[[package]]
+name = "emath"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "bytemuck",
  "serde",
 ]
 
@@ -1664,10 +1809,10 @@ dependencies = [
  "bytemuck",
  "criterion",
  "document-features",
- "ecolor",
+ "ecolor 0.33.3",
  "egui-mutex",
- "emath",
- "epaint_default_fonts",
+ "emath 0.33.3",
+ "epaint_default_fonts 0.33.3",
  "log",
  "mimalloc",
  "nohash-hasher",
@@ -1681,8 +1826,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "epaint"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
+dependencies = [
+ "ahash",
+ "bytemuck",
+ "ecolor 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "emath 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "epaint_default_fonts 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "log",
+ "nohash-hasher",
+ "parking_lot",
+ "profiling",
+ "self_cell",
+ "serde",
+ "skrifa",
+ "vello_cpu",
+]
+
+[[package]]
 name = "epaint_default_fonts"
 version = "0.33.3"
+
+[[package]]
+name = "epaint_default_fonts"
+version = "0.33.3"
+source = "git+https://github.com/emilk/egui?branch=main#f1cde5aab495824da6cf8e9d3c4b87a8d007a6f1"
 
 [[package]]
 name = "equivalent"
@@ -2228,8 +2398,8 @@ version = "0.1.0"
 dependencies = [
  "android_logger",
  "eframe",
- "egui_demo_lib",
- "egui_extras",
+ "egui_demo_lib 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "log",
  "winit",
 ]
@@ -2239,7 +2409,7 @@ name = "hello_world"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui_extras",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "env_logger",
 ]
 
@@ -2447,7 +2617,7 @@ name = "images"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui_extras",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "env_logger",
  "image",
 ]
@@ -4505,7 +4675,7 @@ name = "test_egui_extras_compilation"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui_extras",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
 ]
 
 [[package]]
@@ -4529,7 +4699,7 @@ name = "test_ui_stack"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui_extras",
+ "egui_extras 0.33.3 (git+https://github.com/emilk/egui?branch=main)",
  "env_logger",
 ]
 
@@ -4538,7 +4708,6 @@ name = "test_viewports"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "egui-mutex",
  "env_logger",
 ]
 
@@ -6081,6 +6250,34 @@ name = "xcursor"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
+
+[[package]]
+name = "xframe"
+version = "0.33.3"
+dependencies = [
+ "ahash",
+ "directories",
+ "document-features",
+ "egui 0.33.3",
+ "egui-wgpu 0.33.3",
+ "egui-winit 0.33.3",
+ "home",
+ "image",
+ "log",
+ "objc2 0.5.2",
+ "objc2-app-kit 0.2.2",
+ "objc2-foundation 0.2.2",
+ "pollster",
+ "profiling",
+ "raw-window-handle",
+ "ron",
+ "serde",
+ "static_assertions",
+ "web-time",
+ "wgpu",
+ "windows-sys 0.61.2",
+ "winit",
+]
 
 [[package]]
 name = "xkbcommon-dl"

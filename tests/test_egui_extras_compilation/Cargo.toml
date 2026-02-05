@@ -13,5 +13,5 @@ workspace = true
 ignored = ["eframe", "egui_extras"] # We don't use them, just check that things compile
 
 [dependencies]
-eframe = { workspace = true, features = ["default", "persistence"] }
-egui_extras.workspace = true
+eframe = { git = "https://github.com/emilk/egui", branch = "main", features = ["default", "persistence"] }
+egui_extras = { git = "https://github.com/emilk/egui", branch = "main" }

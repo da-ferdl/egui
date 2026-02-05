@@ -16,10 +16,10 @@ ignored = ["image"] # We only use the dependency to add more features to it
 
 
 [dependencies]
-eframe = { workspace = true, features = [
+eframe = { git = "https://github.com/emilk/egui", branch = "main", features = [
   "default",
   "__screenshot", # __screenshot is so we can dump a screenshot using EFRAME_SCREENSHOT_TO
 ] }
-egui_extras = { workspace = true, features = ["default", "all_loaders"] }
+egui_extras = { git = "https://github.com/emilk/egui", branch = "main", features = ["default", "all_loaders"] }
 env_logger = { workspace = true, features = ["auto-color", "humantime"] }
 image = { workspace = true, features = ["jpeg", "png"] }

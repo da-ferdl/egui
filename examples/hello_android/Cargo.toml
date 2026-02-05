@@ -17,15 +17,15 @@ crate-type = ["cdylib", "lib"]
 
 
 [dependencies]
-eframe = { workspace = true, default-features = false, features = [
+eframe = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = [
   "default_fonts",
   "glow",
   "android-native-activity",
 ] }
-egui_demo_lib = { workspace = true, features = ["chrono"] }
+egui_demo_lib = { git = "https://github.com/emilk/egui", branch = "main", features = ["chrono"] }
 
 # For image support:
-egui_extras = { workspace = true, features = ["default", "image"] }
+egui_extras = { git = "https://github.com/emilk/egui", branch = "main", features = ["default", "image"] }
 
 android_logger.workspace = true
 log.workspace = true
