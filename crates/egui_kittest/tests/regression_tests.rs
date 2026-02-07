@@ -162,7 +162,7 @@ pub fn slider_should_move_with_fixed_decimals() {
 pub fn override_text_color_affects_interactive_widgets() {
     use egui::{Color32, RichText};
 
-    let mut harness = Harness::new_ui(|ui| {
+    let _harness = Harness::new_ui(|ui| {
         _ = ui.button("normal");
         _ = ui.checkbox(&mut true, "normal");
         _ = ui.radio(true, "normal");
@@ -185,7 +185,7 @@ pub fn override_text_color_affects_interactive_widgets() {
     let mut results = SnapshotResults::new();
 
     #[cfg(all(feature = "wgpu", feature = "snapshot"))]
-    results.add(harness.try_snapshot("override_text_color_interactive"));
+    results.add(_harness.try_snapshot("override_text_color_interactive"));
 }
 
 /// <https://github.com/rerun-io/rerun/issues/11301>

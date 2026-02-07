@@ -24,7 +24,7 @@ pub fn create_egui_context(storage: Option<&dyn crate::Storage>) -> egui::Contex
     egui_ctx.set_embed_viewports(!IS_DESKTOP);
 
     egui_ctx.options_mut(|o| {
-        // eframe supports multi-pass (Context::request_discard).
+        // xframe supports multi-pass (Context::request_discard).
         #[expect(clippy::unwrap_used)]
         {
             o.max_passes = 2.try_into().unwrap();
@@ -37,7 +37,7 @@ pub fn create_egui_context(storage: Option<&dyn crate::Storage>) -> egui::Contex
     egui_ctx
 }
 
-/// The custom even `eframe` uses with the [`winit`] event loop.
+/// The custom even `xframe` uses with the [`winit`] event loop.
 #[derive(Debug)]
 pub enum UserEvent {
     /// A repaint is requested.
@@ -58,7 +58,7 @@ pub enum UserEvent {
         repaint_proxy_send_cause: Option<RepaintCause>,
     },
 
-    /// Variant for 'eframe::create_native' users to run code / pass data to the event-loop
+    /// Variant for 'xframe::create_native' users to run code / pass data to the event-loop
     /// thread through a 'EventLoopProxy'.
     ExtCustomEvent(Box<dyn Any + Send>),
 }
@@ -121,11 +121,11 @@ pub enum EventResult {
     /// Causes a save of the client state when the persistence feature is enabled.
     Save,
 
-    /// Starts the process of ending eframe execution whilst allowing for proper
+    /// Starts the process of ending xframe execution whilst allowing for proper
     /// clean up of resources.
     ///
     /// # Warning
-    /// This event **must** occur before [`Exit`] to correctly exit eframe code.
+    /// This event **must** occur before [`Exit`] to correctly exit xframe code.
     /// If in doubt, return this event.
     ///
     /// [`Exit`]: [EventResult::Exit]

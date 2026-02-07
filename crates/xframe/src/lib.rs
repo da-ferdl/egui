@@ -2,60 +2,24 @@
 //!
 //!
 //! In short, you implement [`App`] (especially [`App::update`]) and then
-//! call [`crate::run_native`] from your `main.rs`, and/or use `eframe::WebRunner` from your `lib.rs`.
-//!
-//! ## Compiling for web
-//! You need to install the `wasm32` target with `rustup target add wasm32-unknown-unknown`.
-//!
-//! Build the `.wasm` using `cargo build --target wasm32-unknown-unknown`
-//! and then use [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) to generate the JavaScript glue code.
-//!
-//! See the [`eframe_template` repository](https://github.com/emilk/eframe_template/) for more.
-//!
-//! ## Simplified usage
-//! If your app is only for native, and you don't need advanced features like state persistence,
-//! then you can use the simpler function [`run_simple_native`].
-//!
-//! ## Usage, native:
-//! ``` no_run
-//! use eframe::egui;
-//!
-//! fn main() {
-//!     let native_options = eframe::NativeOptions::default();
-//!     eframe::run_native("My egui App", native_options, Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc)))));
-//! }
-//!
-//! #[derive(Default)]
-//! struct MyEguiApp {}
-//!
-//! impl MyEguiApp {
-//!     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-//!         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_global_style.
-//!         // Restore app state using cc.storage (requires the "persistence" feature).
-//!         Self::default()
-//!     }
-//! }
-//!
-//! impl xframe::App for MyEguiApp {
-//!    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-//!        egui::CentralPanel::default().show_inside(ui, |ui| {
-//!            ui.heading("Hello World!");
-//!        });
-//!    }
-//! }
-//! ```
+//! call [`crate::run_native`] from your `main.rs` / `lib.rs`, or use [`crate::create_native_handler`]
+//! to create your own winit app proxy.
 //!
 //! ## Feature flags
 
 // Re-export all useful libraries:
+pub use winit;
 pub use {egui, egui::emath, egui::epaint};
-
 pub use {egui_wgpu, wgpu};
 
 mod epi;
 
 // Re-export everything in `epi` so `xframe` users don't have to care about what `epi` is:
 pub use epi::*;
+
+/// Re-export `AndroidApp` so `xframe` users don't need to deal with version mismatches.
+#[cfg(target_os = "android")]
+pub use winit::platform::android::activity::AndroidApp;
 
 pub(crate) mod stopwatch;
 
@@ -64,11 +28,6 @@ pub(crate) mod stopwatch;
 
 pub mod icon_data;
 mod native;
-
-pub use native::run::EframeWinitApplication;
-
-#[cfg(not(target_os = "ios"))]
-pub use native::run::EframePumpStatus;
 
 #[cfg(feature = "persistence")]
 pub use native::file_storage::storage_dir;
@@ -86,18 +45,18 @@ pub use native::file_storage::storage_dir;
 ///
 /// Call from `fn main` like this:
 /// ``` no_run
-/// use eframe::egui;
+/// use xframe::egui;
 ///
-/// fn main() -> eframe::Result {
-///     let native_options = eframe::NativeOptions::default();
-///     eframe::run_native("MyApp", native_options, Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc)))))
+/// fn main() -> xframe::Result {
+///     let native_options = xframe::NativeOptions::default();
+///     xframe::run_native("MyApp", native_options, Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc)))))
 /// }
 ///
 /// #[derive(Default)]
 /// struct MyEguiApp {}
 ///
 /// impl MyEguiApp {
-///     fn new(cc: &eframe::CreationContext<'_>) -> Self {
+///     fn new(cc: &xframe::CreationContext<'_>) -> Self {
 ///         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_global_style.
 ///         // Restore app state using cc.storage (requires the "persistence" feature).
 ///         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
@@ -106,8 +65,8 @@ pub use native::file_storage::storage_dir;
 ///     }
 /// }
 ///
-/// impl eframe::App for MyEguiApp {
-///    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+/// impl xframe::App for MyEguiApp {
+///    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut xframe::Frame) {
 ///        egui::CentralPanel::default().show_inside(ui, |ui| {
 ///            ui.heading("Hello World!");
 ///        });
@@ -123,69 +82,26 @@ pub fn run_native(
     mut native_options: NativeOptions,
     app_creator: AppCreator<'_>,
 ) -> Result {
-    let renderer = init_native(app_name, &mut native_options);
+    log::debug!("Using 'xframe::run_native' with wgpu renderer");
 
-    match renderer {
-        #[cfg(feature = "wgpu_no_default_features")]
-        Renderer::Wgpu => {
-            log::debug!("Using the wgpu renderer");
-            native::run::run_wgpu(app_name, native_options, app_creator)
-        }
-    }
+    init_native(app_name, &mut native_options);
+
+    native::run::run_wgpu(app_name, native_options, app_creator)
 }
 
-/// Provides a proxy for your native eframe application to run on your own event loop.
-///
-/// See `run_native` for details about `app_name`.
-///
-/// Call from `fn main` like this:
-/// ``` no_run
-/// use eframe::{egui, UserEvent};
-/// use winit::event_loop::{ControlFlow, EventLoop};
-///
-/// fn main() -> eframe::Result {
-///     let native_options = eframe::NativeOptions::default();
-///     let eventloop = EventLoop::<UserEvent>::with_user_event().build()?;
-///     eventloop.set_control_flow(ControlFlow::Poll);
-///
-///     let mut winit_app = eframe::create_native(
-///         "MyExtApp",
-///         native_options,
-///         Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc)))),
-///         &eventloop,
-///     );
-///
-///     eventloop.run_app(&mut winit_app)?;
-///
-///     Ok(())
-/// }
-///
-/// #[derive(Default)]
-/// struct MyEguiApp {}
-///
-/// impl MyEguiApp {
-///     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-///         Self::default()
-///     }
-/// }
-///
-/// impl eframe::App for MyEguiApp {
-///    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-///        egui::CentralPanel::default().show_inside(ui, |ui| {
-///            ui.heading("Hello World!");
-///        });
-///    }
-/// }
-/// ```
-///
-/// See the `external_eventloop` example for a more complete example.
-pub fn create_native<'a>(
+/// Provides a [winit::application::ApplicationHandler] implementation to create your
+/// own proxy type.
+pub fn create_native_handler<'a>(
     app_name: &str,
-    native_options: NativeOptions,
+    mut native_options: NativeOptions,
     app_creator: AppCreator<'a>,
     event_loop: &winit::event_loop::EventLoop<UserEvent>,
-) -> EframeWinitApplication<'a> {
-    EframeWinitApplication::new(create_native_handler(
+) -> Box<dyn winit::application::ApplicationHandler<UserEvent> + 'a> {
+    log::debug!("Using 'xframe::create_native_handler' with wgpu renderer");
+
+    init_native(app_name, &mut native_options);
+
+    Box::new(native::run::create_wgpu(
         app_name,
         native_options,
         app_creator,
@@ -193,38 +109,11 @@ pub fn create_native<'a>(
     ))
 }
 
-/// Provides a [winit::application::ApplicationHandler] implementation to create your
-/// own proxy type like the [EframeWinitApplication] returned from [create_native].
-///
-/// For usage details and examples please take a look at [create_native] and [EframeWinitApplication],
-/// which wraps a [winit::application::ApplicationHandler] internally.
-pub fn create_native_handler<'a>(
-    app_name: &str,
-    mut native_options: NativeOptions,
-    app_creator: AppCreator<'a>,
-    event_loop: &winit::event_loop::EventLoop<UserEvent>,
-) -> Box<dyn winit::application::ApplicationHandler<UserEvent> + 'a> {
-    let renderer = init_native(app_name, &mut native_options);
-
-    match renderer {
-        #[cfg(feature = "wgpu_no_default_features")]
-        Renderer::Wgpu => {
-            log::debug!("Using the wgpu renderer");
-            Box::new(native::run::create_wgpu(
-                app_name,
-                native_options,
-                app_creator,
-                event_loop,
-            ))
-        }
-    }
-}
-
-fn init_native(app_name: &str, native_options: &mut NativeOptions) -> Renderer {
+fn init_native(app_name: &str, native_options: &mut NativeOptions) {
     #[cfg(not(feature = "__screenshot"))]
     assert!(
-        std::env::var("EFRAME_SCREENSHOT_TO").is_err(),
-        "EFRAME_SCREENSHOT_TO found without compiling with the '__screenshot' feature"
+        std::env::var("XFRAME_SCREENSHOT_TO").is_err(),
+        "XFRAME_SCREENSHOT_TO found without compiling with the '__screenshot' feature"
     );
 
     #[cfg(target_os = "ios")]
@@ -237,15 +126,11 @@ fn init_native(app_name: &str, native_options: &mut NativeOptions) -> Renderer {
     if native_options.viewport.title.is_none() {
         native_options.viewport.title = Some(app_name.to_owned());
     }
-
-    let renderer = native_options.renderer;
-
-    renderer
 }
 
 // ----------------------------------------------------------------------------
 
-/// The different problems that can occur when trying to run `eframe`.
+/// The different problems that can occur when trying to run `xframe`.
 #[derive(Debug)]
 pub enum Error {
     /// Something went wrong in user code when creating the app.
@@ -303,5 +188,5 @@ impl std::fmt::Display for Error {
     }
 }
 
-/// Short for `Result<T, eframe::Error>`.
+/// Short for `Result<T, xframe::Error>`.
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;

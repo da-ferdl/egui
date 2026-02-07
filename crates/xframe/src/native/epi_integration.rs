@@ -1,16 +1,12 @@
 //! Common tools used by [`super::glow_integration`] and [`super::wgpu_integration`].
 
-use web_time::Instant;
-
-use std::path::PathBuf;
-use winit::event_loop::ActiveEventLoop;
-
-use raw_window_handle::{HasDisplayHandle as _, HasWindowHandle as _};
-
+use crate::epi;
 use egui::{DeferredViewportUiCallback, ViewportBuilder, ViewportId};
 use egui_winit::{EventResponse, WindowSettings};
-
-use crate::epi;
+use raw_window_handle::{HasDisplayHandle as _, HasWindowHandle as _};
+use std::path::PathBuf;
+use web_time::Instant;
+use winit::event_loop::ActiveEventLoop;
 
 #[cfg_attr(target_os = "ios", allow(dead_code, unused_variables, unused_mut))]
 pub fn viewport_builder(
@@ -175,22 +171,11 @@ impl EpiIntegration {
         app_name: &str,
         native_options: &crate::NativeOptions,
         storage: Option<Box<dyn epi::Storage>>,
-        #[cfg(feature = "glow")] gl: Option<std::sync::Arc<glow::Context>>,
-        #[cfg(feature = "glow")] glow_register_native_texture: Option<
-            Box<dyn FnMut(glow::Texture) -> egui::TextureId>,
-        >,
-        #[cfg(feature = "wgpu_no_default_features")] wgpu_render_state: Option<
-            egui_wgpu::RenderState,
-        >,
+        wgpu_render_state: Option<egui_wgpu::RenderState>,
     ) -> Self {
         let frame = epi::Frame {
             info: epi::IntegrationInfo { cpu_usage: None },
             storage,
-            #[cfg(feature = "glow")]
-            gl,
-            #[cfg(feature = "glow")]
-            glow_register_native_texture,
-            #[cfg(feature = "wgpu_no_default_features")]
             wgpu_render_state,
             raw_display_handle: window.display_handle().map(|h| h.as_raw()),
             raw_window_handle: window.window_handle().map(|h| h.as_raw()),
@@ -282,13 +267,6 @@ impl EpiIntegration {
                     profiling::scope!("App::logic");
                     app.logic(ui.ctx(), &mut self.frame);
                 }
-
-                {
-                    profiling::scope!("App::update");
-                    #[expect(deprecated)]
-                    app.update(ui.ctx(), &mut self.frame);
-                }
-
                 {
                     profiling::scope!("App::ui");
                     app.ui(ui, &mut self.frame);

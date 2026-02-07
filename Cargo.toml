@@ -150,8 +150,8 @@ web-time = "1.1.0" # Timekeeping for native and web
 webbrowser = "1.0.5"
 wgpu = { version = "27.0.1", default-features = false, features = ["std"] }
 windows-sys = "0.61.2"
-winit = { version = "0.30.12", default-features = false }
-
+# patch with android game-activity version 4.0 (instead of version 2.0) included.
+winit = { version = "0.30.12", default-features = false, git = "https://github.com/da-ferdl/winit", branch = "dev_winit_v0.30.12" }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

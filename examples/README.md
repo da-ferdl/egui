@@ -1,4 +1,4 @@
-#### Fork notice:
+### Fork notice:
 The egui dependencies of the examples here are set to the egui upstream repository, so changes made on this fork's egui are not reflected on the examples.
 
 # `egui` and `eframe` examples

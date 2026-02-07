@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// The folder where `eframe` will store its state.
+/// The folder where `xframe` will store its state.
 ///
 /// The given `app_id` is either the
 /// [`egui::ViewportBuilder::app_id`] of [`crate::NativeOptions::viewport`]
@@ -173,7 +173,7 @@ impl crate::Storage for FileStorage {
             }
 
             let result = std::thread::Builder::new()
-                .name("eframe_persist".to_owned())
+                .name("xframe_persist".to_owned())
                 .spawn(move || {
                     save_to_disk(&file_path, &kv);
                 });

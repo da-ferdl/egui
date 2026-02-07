@@ -19,13 +19,13 @@ pub use winit::{event_loop::EventLoopBuilder, window::WindowAttributes};
 /// Hook into the building of an event loop before it is run
 ///
 /// You can configure any platform specific details required on top of the default configuration
-/// done by `EFrame`.
+/// done by `XFrame`.
 pub type EventLoopBuilderHook = Box<dyn FnOnce(&mut EventLoopBuilder<UserEvent>)>;
 
 /// Hook into the building of a the native window.
 ///
 /// You can configure any platform specific details required on top of the default configuration
-/// done by `eframe`.
+/// done by `xframe`.
 pub type WindowBuilderHook = Box<dyn FnOnce(egui::ViewportBuilder) -> egui::ViewportBuilder>;
 
 type DynError = Box<dyn std::error::Error + Send + Sync>;
@@ -97,7 +97,7 @@ impl CreationContext<'_> {
 
 // ----------------------------------------------------------------------------
 
-/// Implement this trait to write apps that can be compiled for both web/wasm and desktop/native using [`eframe`](https://github.com/emilk/egui/tree/main/crates/eframe).
+/// Implement this trait to write apps that can be compiled for desktop and mobile apps.
 pub trait App {
     /// Called once before each call to [`Self::ui`],
     /// and additionally also called when the UI is hidden, but [`egui::Context::request_repaint`] was called.
@@ -123,22 +123,6 @@ pub trait App {
     /// Use [`egui::Context::show_viewport_deferred`] to spawn additional viewports (windows).
     /// (A "viewport" in egui means an native OS window).
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut Frame);
-
-    /// Called each time the UI needs repainting, which may be many times per second.
-    ///
-    /// Put your widgets into a [`egui::Panel`], [`egui::CentralPanel`], [`egui::Window`] or [`egui::Area`].
-    ///
-    /// The [`egui::Context`] can be cloned and saved if you like.
-    ///
-    /// To force a repaint, call [`egui::Context::request_repaint`] at any time (e.g. from another thread).
-    ///
-    /// This is called for the root viewport ([`egui::ViewportId::ROOT`]).
-    /// Use [`egui::Context::show_viewport_deferred`] to spawn additional viewports (windows).
-    /// (A "viewport" in egui means an native OS window).
-    #[deprecated = "Use Self::ui instead"]
-    fn update(&mut self, ctx: &egui::Context, frame: &mut Frame) {
-        _ = (ctx, frame);
-    }
 
     /// Called on shutdown, and perhaps at regular intervals. Allows you to save state.
     ///
@@ -275,14 +259,10 @@ pub struct NativeOptions {
     /// Default: [`HardwareAcceleration::Preferred`].
     pub hardware_acceleration: HardwareAcceleration,
 
-    /// What rendering backend to use.
-    #[cfg(any(feature = "glow", feature = "wgpu_no_default_features"))]
-    pub renderer: Renderer,
-
-    /// This controls what happens when you close the main eframe window.
+    /// This controls what happens when you close the main xframe window.
     ///
-    /// If `true`, execution will continue after the eframe window is closed.
-    /// If `false`, the app will close once the eframe window is closed.
+    /// If `true`, execution will continue after the xframe window is closed.
+    /// If `false`, the app will close once the xframe window is closed.
     ///
     /// This is `true` by default, and the `false` option is only there
     /// so we can revert if we find any bugs.
@@ -323,7 +303,7 @@ pub struct NativeOptions {
     /// persisted (only if the "persistence" feature is enabled).
     pub persist_window: bool,
 
-    /// The folder where `eframe` will store the app state. If not set, eframe will use a default
+    /// The folder where `xframe` will store the app state. If not set, xframe will use a default
     /// data storage path for each target system.
     pub persistence_path: Option<std::path::PathBuf>,
 
@@ -379,8 +359,6 @@ impl Default for NativeOptions {
             stencil_buffer: 0,
             hardware_acceleration: HardwareAcceleration::Preferred,
 
-            renderer: Renderer::default(),
-
             run_and_return: true,
 
             event_loop_builder: None,
@@ -400,41 +378,6 @@ impl Default for NativeOptions {
             #[cfg(target_os = "android")]
             android_app: None,
         }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// What rendering backend to use.
-///
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
-pub enum Renderer {
-    /// Use [`egui_wgpu`] renderer for [`wgpu`](https://github.com/gfx-rs/wgpu).
-    #[cfg(feature = "wgpu_no_default_features")]
-    Wgpu,
-}
-
-#[cfg(any(feature = "glow", feature = "wgpu_no_default_features"))]
-impl Default for Renderer {
-    fn default() -> Self {
-        Self::Wgpu
-    }
-}
-
-#[cfg(any(feature = "glow", feature = "wgpu_no_default_features"))]
-impl std::fmt::Display for Renderer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "wgpu".fmt(f)
-    }
-}
-
-impl std::str::FromStr for Renderer {
-    type Err = String;
-
-    fn from_str(name: &str) -> Result<Self, String> {
-        Ok(Self::Wgpu)
     }
 }
 
@@ -578,7 +521,7 @@ pub fn set_value<T: serde::Serialize>(storage: &mut dyn Storage, key: &str, valu
     profiling::function_scope!(key);
     match ron::ser::to_string(value) {
         Ok(string) => storage.set_string(key, string),
-        Err(err) => log::error!("eframe failed to encode data using ron: {err}"),
+        Err(err) => log::error!("xframe failed to encode data using ron: {err}"),
     }
 }
 

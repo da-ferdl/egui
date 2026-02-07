@@ -19,4 +19,4 @@ eframe = { git = "https://github.com/emilk/egui", branch = "main", features = [
 
 env_logger = { workspace = true, features = ["auto-color", "humantime"] }
 
-winit.workspace = true
+winit = { version = "0.30.12", default-features = false }

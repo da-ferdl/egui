@@ -1,4 +1,4 @@
-#### Fork notice:
+### Fork notice:
 The egui dependencies of this demo lib are set to the egui upstream repository,
 so changes made on this fork's egui are not reflected on the demo.
 

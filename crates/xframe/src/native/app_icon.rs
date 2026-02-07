@@ -86,7 +86,7 @@ fn set_app_icon_windows(icon_data: &IconData) -> AppIconStatus {
         SM_CXICON, SM_CXSMICON, SendMessageW, WM_SETICON,
     };
 
-    // We would get fairly far already with winit's `set_window_icon` (which is exposed to eframe) actually!
+    // We would get fairly far already with winit's `set_window_icon` (which is exposed to xframe) actually!
     // However, it only sets ICON_SMALL, i.e. doesn't allow us to set a higher resolution icon for the task bar.
     // Also, there is scaling issues, detailed below.
 

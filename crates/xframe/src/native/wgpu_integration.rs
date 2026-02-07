@@ -105,8 +105,8 @@ impl<'app> WgpuWinitApp<'app> {
 
         #[cfg(feature = "__screenshot")]
         assert!(
-            std::env::var("EFRAME_SCREENSHOT_TO").is_err(),
-            "EFRAME_SCREENSHOT_TO not yet implemented for wgpu backend"
+            std::env::var("XFRAME_SCREENSHOT_TO").is_err(),
+            "XFRAME_SCREENSHOT_TO not yet implemented for wgpu backend"
         );
 
         Self {
@@ -227,10 +227,6 @@ impl<'app> WgpuWinitApp<'app> {
             &self.app_name,
             &self.native_options,
             storage,
-            #[cfg(feature = "glow")]
-            None,
-            #[cfg(feature = "glow")]
-            None,
             wgpu_render_state.clone(),
         );
 
@@ -253,7 +249,7 @@ impl<'app> WgpuWinitApp<'app> {
             });
         }
 
-        let mut egui_winit = egui_winit::State::new(
+        let egui_winit = egui_winit::State::new(
             egui_ctx.clone(),
             ViewportId::ROOT,
             event_loop,
@@ -487,13 +483,7 @@ impl WgpuWinitRunning<'_> {
 
     fn save_and_destroy(&mut self) {
         profiling::function_scope!();
-
         self.save();
-
-        #[cfg(feature = "glow")]
-        self.app.on_exit(None);
-
-        #[cfg(not(feature = "glow"))]
         self.app.on_exit();
 
         let mut shared = self.shared.borrow_mut();
@@ -742,7 +732,7 @@ impl WgpuWinitRunning<'_> {
         // event handler. If this is not done, the compositor will assume that the window does not want
         // to redraw and continue ahead.
         //
-        // In eframe's case, that causes the window to rapidly flicker, as it struggles to deliver
+        // In xframe's case, that causes the window to rapidly flicker, as it struggles to deliver
         // new frames to the compositor in time. The flickering is technically glutin or glow's fault, but we should be responding properly
         // to resizes anyway, as doing so avoids dropping frames.
         //
