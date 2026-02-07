@@ -149,7 +149,7 @@ impl<T: WinitApp> WinitAppWrapper<T> {
     }
 }
 
-impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
+impl<T: WinitApp, U> ApplicationHandler<UserEvent<U>> for WinitAppWrapper<T> {
     fn suspended(&mut self, event_loop: &ActiveEventLoop) {
         profiling::scope!("Event::Suspended");
 
@@ -193,7 +193,7 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
         });
     }
 
-    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UserEvent) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UserEvent<U>) {
         profiling::function_scope!(match &event {
             UserEvent::RequestRepaint { .. } => "UserEvent::RequestRepaint",
             UserEvent::ExtCustomEvent(_) => "UserEvent::ExtCustomEvent",
@@ -300,12 +300,12 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
 
 // ----------------------------------------------------------------------------
 
-pub fn create_wgpu<'a>(
+pub fn create_wgpu<'a, U: Send>(
     app_name: &str,
-    native_options: epi::NativeOptions,
+    native_options: epi::NativeOptions<U>,
     app_creator: epi::AppCreator<'a>,
-    event_loop: &EventLoop<UserEvent>,
-) -> impl ApplicationHandler<UserEvent> + 'a {
+    event_loop: &EventLoop<UserEvent<U>>,
+) -> impl ApplicationHandler<UserEvent<U>> + 'a {
     use super::wgpu_integration::WgpuWinitApp;
 
     let run_and_return = native_options.run_and_return;

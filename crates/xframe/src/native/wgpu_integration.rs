@@ -32,10 +32,10 @@ use super::{epi_integration, event_loop_context, winit_integration, winit_integr
 // ----------------------------------------------------------------------------
 // Types:
 
-pub struct WgpuWinitApp<'app> {
-    repaint_proxy: EventLoopProxy<UserEvent>,
+pub struct WgpuWinitApp<'app, U: 'static> {
+    repaint_proxy: EventLoopProxy<UserEvent<U>>,
     app_name: String,
-    native_options: NativeOptions,
+    native_options: NativeOptions<U>,
 
     /// Set at initialization, then taken and set to `None` in `init_run_state`.
     app_creator: Option<AppCreator<'app>>,
@@ -94,11 +94,11 @@ pub struct Viewport {
 
 // ----------------------------------------------------------------------------
 
-impl<'app> WgpuWinitApp<'app> {
+impl<'app, U: Send> WgpuWinitApp<'app, U> {
     pub fn new(
-        event_loop: &EventLoop<UserEvent>,
+        event_loop: &EventLoop<UserEvent<U>>,
         app_name: &str,
-        native_options: NativeOptions,
+        native_options: NativeOptions<U>,
         app_creator: AppCreator<'app>,
     ) -> Self {
         profiling::function_scope!();
@@ -331,7 +331,7 @@ impl<'app> WgpuWinitApp<'app> {
     }
 }
 
-impl WinitApp for WgpuWinitApp<'_> {
+impl<U: Send> WinitApp for WgpuWinitApp<'_, U> {
     fn egui_ctx(&self) -> Option<&egui::Context> {
         self.running.as_ref().map(|r| &r.integration.egui_ctx)
     }
@@ -902,11 +902,11 @@ impl Viewport {
     }
 }
 
-fn create_window(
+fn create_window<U>(
     egui_ctx: &egui::Context,
     event_loop: &ActiveEventLoop,
     storage: Option<&dyn Storage>,
-    native_options: &mut NativeOptions,
+    native_options: &mut NativeOptions<U>,
 ) -> Result<(Window, ViewportBuilder), winit::error::OsError> {
     profiling::function_scope!();
 

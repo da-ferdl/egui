@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
 use winit::{
     event_loop::ActiveEventLoop,
@@ -39,7 +39,7 @@ pub fn create_egui_context(storage: Option<&dyn crate::Storage>) -> egui::Contex
 
 /// The custom even `xframe` uses with the [`winit`] event loop.
 #[derive(Debug)]
-pub enum UserEvent {
+pub enum UserEvent<U: 'static> {
     /// A repaint is requested.
     RequestRepaint {
         /// What to repaint.
@@ -60,7 +60,7 @@ pub enum UserEvent {
 
     /// Variant for 'xframe::create_native' users to run code / pass data to the event-loop
     /// thread through a 'EventLoopProxy'.
-    ExtCustomEvent(Box<dyn Any + Send>),
+    ExtCustomEvent(U),
 }
 
 pub trait WinitApp {

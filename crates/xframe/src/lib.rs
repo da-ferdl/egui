@@ -31,12 +31,12 @@ pub use native::file_storage::storage_dir;
 
 /// Provides a [winit::application::ApplicationHandler] implementation to create your
 /// own proxy type.
-pub fn create_native_handler<'a>(
+pub fn create_native_handler<'a, U: Send>(
     app_name: &str,
-    mut native_options: NativeOptions,
+    mut native_options: NativeOptions<U>,
     app_creator: AppCreator<'a>,
-    event_loop: &winit::event_loop::EventLoop<UserEvent>,
-) -> Box<dyn winit::application::ApplicationHandler<UserEvent> + 'a> {
+    event_loop: &winit::event_loop::EventLoop<UserEvent<U>>,
+) -> Box<dyn winit::application::ApplicationHandler<UserEvent<U>> + 'a> {
     log::debug!("Using 'xframe::create_native_handler' with wgpu renderer");
 
     #[cfg(not(feature = "__screenshot"))]

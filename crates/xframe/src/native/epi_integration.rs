@@ -9,10 +9,10 @@ use web_time::Instant;
 use winit::event_loop::ActiveEventLoop;
 
 #[cfg_attr(target_os = "ios", allow(dead_code, unused_variables, unused_mut))]
-pub fn viewport_builder(
+pub fn viewport_builder<U>(
     egui_zoom_factor: f32,
     event_loop: &ActiveEventLoop,
-    native_options: &mut epi::NativeOptions,
+    native_options: &mut epi::NativeOptions<U>,
     window_settings: Option<WindowSettings>,
 ) -> ViewportBuilder {
     profiling::function_scope!();
@@ -166,11 +166,11 @@ pub struct EpiIntegration {
 
 impl EpiIntegration {
     #[allow(clippy::allow_attributes, clippy::too_many_arguments)]
-    pub fn new(
+    pub fn new<U>(
         egui_ctx: egui::Context,
         window: &winit::window::Window,
         app_name: &str,
-        native_options: &crate::NativeOptions,
+        native_options: &crate::NativeOptions<U>,
         storage: Option<Box<dyn epi::Storage>>,
         wgpu_render_state: Option<egui_wgpu::RenderState>,
     ) -> Self {

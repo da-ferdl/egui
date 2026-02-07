@@ -20,7 +20,7 @@ pub use winit::{event_loop::EventLoopBuilder, window::WindowAttributes};
 ///
 /// You can configure any platform specific details required on top of the default configuration
 /// done by `XFrame`.
-pub type EventLoopBuilderHook = Box<dyn FnOnce(&mut EventLoopBuilder<UserEvent>)>;
+pub type EventLoopBuilderHook<U> = Box<dyn FnOnce(&mut EventLoopBuilder<UserEvent<U>>)>;
 
 /// Hook into the building of a the native window.
 ///
@@ -219,7 +219,7 @@ pub enum HardwareAcceleration {
 ///
 /// If you don't set an app id, the title argument to [`crate::run_native`]
 /// will be used as app id instead.
-pub struct NativeOptions {
+pub struct NativeOptions<U: 'static> {
     /// Controls the native window of the root viewport.
     ///
     /// This is where you set things like window title and size.
@@ -256,7 +256,7 @@ pub struct NativeOptions {
     /// event loop before it is run.
     ///
     /// Note: A [`NativeOptions`] clone will not include any `event_loop_builder` hook.
-    pub event_loop_builder: Option<EventLoopBuilderHook>,
+    pub event_loop_builder: Option<EventLoopBuilderHook<U>>,
 
     /// Hook into the building of a window.
     ///
@@ -304,7 +304,7 @@ pub struct NativeOptions {
     pub android_app: Option<winit::platform::android::activity::AndroidApp>,
 }
 
-impl Clone for NativeOptions {
+impl<U> Clone for NativeOptions<U> {
     fn clone(&self) -> Self {
         Self {
             viewport: self.viewport.clone(),
@@ -325,7 +325,7 @@ impl Clone for NativeOptions {
     }
 }
 
-impl Default for NativeOptions {
+impl<U> Default for NativeOptions<U> {
     fn default() -> Self {
         Self {
             viewport: Default::default(),
