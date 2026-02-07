@@ -158,6 +158,7 @@ pub struct EpiIntegration {
     close: bool,
 
     can_drag_window: bool,
+
     #[cfg(feature = "persistence")]
     persist_window: bool,
     app_icon_setter: super::app_icon::AppTitleIconSetter,
@@ -247,7 +248,7 @@ impl EpiIntegration {
     /// If `viewport_ui_cb` is None, we are in the root viewport and will call [`crate::App::update`].
     pub fn update(
         &mut self,
-        app: &mut dyn epi::App,
+        app: &mut dyn epi::XFrameApp,
         viewport_ui_cb: Option<&DeferredViewportUiCallback>,
         mut raw_input: egui::RawInput,
     ) -> egui::FullOutput {
@@ -308,7 +309,7 @@ impl EpiIntegration {
 
     pub fn maybe_autosave(
         &mut self,
-        app: &mut dyn epi::App,
+        app: &mut dyn epi::XFrameApp,
         window: Option<&winit::window::Window>,
     ) {
         let now = Instant::now();
@@ -318,7 +319,7 @@ impl EpiIntegration {
         }
     }
 
-    pub fn save(&mut self, app: &mut dyn epi::App, window: Option<&winit::window::Window>) {
+    pub fn save(&mut self, app: &mut dyn epi::XFrameApp, window: Option<&winit::window::Window>) {
         #[cfg(not(feature = "persistence"))]
         let _ = (self, app, window);
 

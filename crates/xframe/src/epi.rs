@@ -34,7 +34,7 @@ type DynError = Box<dyn std::error::Error + Send + Sync>;
 ///
 /// You can use the [`CreationContext`] to setup egui, restore state, setup OpenGL things, etc.
 pub type AppCreator<'app> =
-    Box<dyn 'app + FnOnce(&CreationContext<'_>) -> Result<Box<dyn 'app + App>, DynError>>;
+    Box<dyn 'app + FnOnce(&CreationContext<'_>) -> Result<Box<dyn 'app + XFrameApp>, DynError>>;
 
 /// Data that is passed to [`AppCreator`] that can be used to setup and initialize your app.
 pub struct CreationContext<'s> {
@@ -98,7 +98,7 @@ impl CreationContext<'_> {
 // ----------------------------------------------------------------------------
 
 /// Implement this trait to write apps that can be compiled for desktop and mobile apps.
-pub trait App {
+pub trait XFrameApp {
     /// Called once before each call to [`Self::ui`],
     /// and additionally also called when the UI is hidden, but [`egui::Context::request_repaint`] was called.
     ///
@@ -228,32 +228,6 @@ pub struct NativeOptions {
     /// To avoid this, set the icon to [`egui::IconData::default`].
     pub viewport: egui::ViewportBuilder,
 
-    /// Turn on vertical syncing, limiting the FPS to the display refresh rate.
-    ///
-    /// The default is `true`.
-    pub vsync: bool,
-
-    /// Set the level of the multisampling anti-aliasing (MSAA).
-    ///
-    /// Must be a power-of-two. Higher = more smooth 3D.
-    ///
-    /// A value of `0` turns it off (default).
-    ///
-    /// `egui` already performs anti-aliasing via "feathering"
-    /// (controlled by [`egui::epaint::TessellationOptions`]),
-    /// but if you are embedding 3D in egui you may want to turn on multisampling.
-    pub multisampling: u16,
-
-    /// Sets the number of bits in the depth buffer.
-    ///
-    /// `egui` doesn't need the depth buffer, so the default value is 0.
-    pub depth_buffer: u8,
-
-    /// Sets the number of bits in the stencil buffer.
-    ///
-    /// `egui` doesn't need the stencil buffer, so the default value is 0.
-    pub stencil_buffer: u8,
-
     /// Specify whether or not hardware acceleration is preferred, required, or not.
     ///
     /// Default: [`HardwareAcceleration::Preferred`].
@@ -271,6 +245,9 @@ pub struct NativeOptions {
     ///
     /// When `true`, [`winit::platform::run_on_demand::EventLoopExtRunOnDemand`] is used.
     /// When `false`, [`winit::event_loop::EventLoop::run`] is used.
+    ///
+    /// **Note:** On iOS `run_and_return` (`run_app_on_demand`) is not supported,
+    /// so when compiling for iOS always `false` is used.
     pub run_and_return: bool,
 
     /// Hook into the building of an event loop before it is run.
@@ -353,10 +330,6 @@ impl Default for NativeOptions {
         Self {
             viewport: Default::default(),
 
-            vsync: true,
-            multisampling: 0,
-            depth_buffer: 0,
-            stencil_buffer: 0,
             hardware_acceleration: HardwareAcceleration::Preferred,
 
             run_and_return: true,

@@ -23,7 +23,7 @@ use egui::{
 use winit_integration::UserEvent;
 
 use crate::{
-    App, AppCreator, CreationContext, NativeOptions, Result, Storage,
+    AppCreator, CreationContext, NativeOptions, Result, Storage, XFrameApp,
     native::{epi_integration::EpiIntegration, winit_integration::EventResult},
 };
 
@@ -51,7 +51,7 @@ struct WgpuWinitRunning<'app> {
     integration: EpiIntegration,
 
     /// The users application.
-    app: Box<dyn 'app + App>,
+    app: Box<dyn 'app + XFrameApp>,
 
     /// Wrapped in an `Rc<RefCell<…>>` so it can be re-entrantly shared via a weak-pointer.
     shared: Rc<RefCell<SharedState>>,
@@ -186,10 +186,18 @@ impl<'app> WgpuWinitApp<'app> {
             self.native_options.wgpu_options.clone(),
             self.native_options.viewport.transparent.unwrap_or(false),
             egui_wgpu::RendererOptions {
-                msaa_samples: self.native_options.multisampling as _,
+                // Sets the level of the multisampling anti-aliasing (MSAA).
+                // Must be a power-of-two. Higher = more smooth 3D.
+                // A value of `0` turns it off.
+                //
+                // `egui` already performs anti-aliasing via "feathering"
+                // (controlled by [`egui::epaint::TessellationOptions`]),
+                // but if you are embedding 3D in egui you may want to turn on multisampling.
+                msaa_samples: 0,
                 depth_stencil_format: egui_wgpu::depth_format_from_bits(
-                    self.native_options.depth_buffer,
-                    self.native_options.stencil_buffer,
+                    // `egui` doesn't need the depth buffer, so the value is set to 0
+                    0, // `egui` doesn't need the stencil buffer, so the value is set to 0
+                    0,
                 ),
                 dithering: self.native_options.dithering,
                 ..Default::default()

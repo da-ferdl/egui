@@ -11,55 +11,6 @@ use winit::{
     window::WindowId,
 };
 
-// ----------------------------------------------------------------------------
-fn create_event_loop(native_options: &mut epi::NativeOptions) -> Result<EventLoop<UserEvent>> {
-    #[cfg(target_os = "android")]
-    use winit::platform::android::EventLoopBuilderExtAndroid as _;
-
-    profiling::function_scope!();
-    let mut builder = winit::event_loop::EventLoop::with_user_event();
-
-    #[cfg(target_os = "android")]
-    let mut builder =
-        builder.with_android_app(native_options.android_app.take().ok_or_else(|| {
-            crate::Error::AppCreation(Box::from(
-                "`NativeOptions` is missing required `android_app`",
-            ))
-        })?);
-
-    if let Some(hook) = std::mem::take(&mut native_options.event_loop_builder) {
-        hook(&mut builder);
-    }
-
-    profiling::scope!("EventLoopBuilder::build");
-    Ok(builder.build()?)
-}
-
-/// Access a thread-local event loop.
-///
-/// We reuse the event-loop so we can support closing and opening an xframe window
-/// multiple times. This is just a limitation of winit.
-#[cfg(not(target_os = "ios"))]
-fn with_event_loop<R>(
-    mut native_options: epi::NativeOptions,
-    f: impl FnOnce(&mut EventLoop<UserEvent>, epi::NativeOptions) -> R,
-) -> Result<R> {
-    thread_local!(static EVENT_LOOP: std::cell::RefCell<Option<EventLoop<UserEvent>>> = const { std::cell::RefCell::new(None) });
-
-    EVENT_LOOP.with(|event_loop| {
-        // Since we want to reference NativeOptions when creating the EventLoop we can't
-        // do that as part of the lazy thread local storage initialization and so we instead
-        // create the event loop lazily here
-        let mut event_loop_lock = event_loop.borrow_mut();
-        let event_loop = if let Some(event_loop) = &mut *event_loop_lock {
-            event_loop
-        } else {
-            event_loop_lock.insert(create_event_loop(&mut native_options)?)
-        };
-        Ok(f(event_loop, native_options))
-    })
-}
-
 /// Wraps a [`WinitApp`] to implement [`ApplicationHandler`]. This handles redrawing, exit states, and
 /// some events, but otherwise forwards events to the [`WinitApp`].
 struct WinitAppWrapper<T: WinitApp> {
@@ -347,50 +298,7 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
     }
 }
 
-#[cfg(not(target_os = "ios"))]
-fn run_and_return(event_loop: &mut EventLoop<UserEvent>, winit_app: impl WinitApp) -> Result {
-    use winit::platform::run_on_demand::EventLoopExtRunOnDemand as _;
-
-    log::trace!("Entering the winit event loop (run_app_on_demand)…");
-
-    let mut app = WinitAppWrapper::new(winit_app, true);
-    event_loop.run_app_on_demand(&mut app)?;
-    log::debug!("xframe window closed");
-    app.return_result
-}
-
-fn run_and_exit(event_loop: EventLoop<UserEvent>, winit_app: impl WinitApp) -> Result {
-    log::trace!("Entering the winit event loop (run_app)…");
-
-    // When to repaint what window
-    let mut app = WinitAppWrapper::new(winit_app, false);
-    event_loop.run_app(&mut app)?;
-
-    log::debug!("winit event loop unexpectedly returned");
-    Ok(())
-}
-
 // ----------------------------------------------------------------------------
-
-pub fn run_wgpu(
-    app_name: &str,
-    mut native_options: epi::NativeOptions,
-    app_creator: epi::AppCreator<'_>,
-) -> Result {
-    use super::wgpu_integration::WgpuWinitApp;
-
-    #[cfg(not(target_os = "ios"))]
-    if native_options.run_and_return {
-        return with_event_loop(native_options, |event_loop, native_options| {
-            let wgpu_xframe = WgpuWinitApp::new(event_loop, app_name, native_options, app_creator);
-            run_and_return(event_loop, wgpu_xframe)
-        })?;
-    }
-
-    let event_loop = create_event_loop(&mut native_options)?;
-    let wgpu_xframe = WgpuWinitApp::new(&event_loop, app_name, native_options, app_creator);
-    run_and_exit(event_loop, wgpu_xframe)
-}
 
 pub fn create_wgpu<'a>(
     app_name: &str,
