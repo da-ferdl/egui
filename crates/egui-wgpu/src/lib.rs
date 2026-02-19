@@ -34,8 +34,8 @@ pub mod capture;
 #[cfg(feature = "winit")]
 pub mod winit;
 
-use egui_mutex::SMutex;
 use std::sync::Arc;
+use sync_utils::SMutex;
 
 /// An error produced by egui-wgpu.
 #[derive(thiserror::Error, Debug)]

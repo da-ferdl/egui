@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use egui::load::{Bytes, BytesLoadResult, BytesLoader, BytesPoll, LoadError};
-use egui_mutex::SMutex;
 use std::{sync::Arc, task::Poll, thread};
+use sync_utils::SMutex;
 
 #[derive(Clone)]
 struct File {

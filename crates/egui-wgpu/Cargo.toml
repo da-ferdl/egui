@@ -51,7 +51,7 @@ macos-window-resize-jitter-fix = ["wgpu/metal"]
 
 [dependencies]
 epaint = { workspace = true, default-features = false, features = ["bytemuck"] }
-egui-mutex = { workspace = true }
+sync-utils.workspace = true
 ahash.workspace = true
 bytemuck.workspace = true
 document-features.workspace = true

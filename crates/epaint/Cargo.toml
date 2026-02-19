@@ -60,7 +60,6 @@ _override_unity = []
 [dependencies]
 emath.workspace = true
 ecolor.workspace = true
-egui-mutex.workspace = true
 ahash.workspace = true
 log.workspace = true
 nohash-hasher.workspace = true
@@ -69,6 +68,7 @@ nohash-hasher.workspace = true
 profiling.workspace = true
 self_cell.workspace = true
 skrifa.workspace = true
+sync-utils.workspace = true
 vello_cpu.workspace = true
 
 #! ### Optional dependencies

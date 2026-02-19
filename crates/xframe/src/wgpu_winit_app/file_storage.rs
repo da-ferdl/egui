@@ -14,7 +14,7 @@ use std::{
 /// * Linux:   `/home/UserName/.local/share/APP_ID`
 /// * macOS:   `/Users/UserName/Library/Application Support/APP_ID`
 /// * Windows: `C:\Users\UserName\AppData\Roaming\APP_ID\data`
-pub fn storage_dir(app_id: &str) -> Option<PathBuf> {
+pub(crate) fn storage_dir(app_id: &str) -> Option<PathBuf> {
     use egui::os::OperatingSystem as OS;
     use std::env::var_os;
     match OS::from_target_os() {

@@ -1143,6 +1143,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-queue"
+version = "0.3.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f58bbc28f91df819d0aa2a2c00cd19754769c2fad90579b3592b1c9ba7a3115"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1317,7 +1326,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "dpi"
 version = "0.1.1"
-source = "git+https://github.com/da-ferdl/winit?branch=dev_winit_v0.30.12#2ff5e1d5cff50301e14da562d21fdc40cc44adfd"
+source = "git+https://github.com/da-ferdl/winit?branch=dev_winit_v0.30.12#95b572524443e77746d10225ba973eb2c468b18e"
 
 [[package]]
 name = "dpi"
@@ -1428,13 +1437,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui-mutex"
-version = "0.33.3"
-dependencies = [
- "atomic-wait",
-]
-
-[[package]]
 name = "egui-wgpu"
 version = "0.33.3"
 dependencies = [
@@ -1442,10 +1444,10 @@ dependencies = [
  "bytemuck",
  "document-features",
  "egui 0.33.3",
- "egui-mutex",
  "epaint 0.33.3",
  "log",
  "profiling",
+ "sync-utils",
  "thiserror 2.0.18",
  "type-map",
  "web-time",
@@ -1584,7 +1586,6 @@ dependencies = [
  "chrono",
  "document-features",
  "egui 0.33.3",
- "egui-mutex",
  "ehttp",
  "enum-map",
  "image",
@@ -1593,6 +1594,7 @@ dependencies = [
  "profiling",
  "resvg",
  "serde",
+ "sync-utils",
  "syntect",
 ]
 
@@ -1835,7 +1837,6 @@ dependencies = [
  "criterion",
  "document-features",
  "ecolor 0.33.3",
- "egui-mutex",
  "emath 0.33.3",
  "epaint_default_fonts 0.33.3",
  "log",
@@ -1847,6 +1848,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "skrifa",
+ "sync-utils",
  "vello_cpu",
 ]
 
@@ -4642,6 +4644,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sync-utils"
+version = "0.1.0"
+source = "git+https://github.com/da-ferdl/sync-utils?branch=main#7541af8a472ad97f1333fd9bebd9235ddd59925c"
+dependencies = [
+ "atomic-wait",
+ "crossbeam-queue",
+]
+
+[[package]]
 name = "synstructure"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6220,7 +6231,7 @@ dependencies = [
 [[package]]
 name = "winit"
 version = "0.30.12"
-source = "git+https://github.com/da-ferdl/winit?branch=dev_winit_v0.30.12#2ff5e1d5cff50301e14da562d21fdc40cc44adfd"
+source = "git+https://github.com/da-ferdl/winit?branch=dev_winit_v0.30.12#95b572524443e77746d10225ba973eb2c468b18e"
 dependencies = [
  "ahash",
  "android-activity 0.6.0 (git+https://github.com/da-ferdl/android-activity?branch=dev_android-activity_v0.6.0_with_ga-4.0_fix)",

@@ -43,10 +43,6 @@ default_fonts = ["egui/default_fonts"]
 ## Enable saving app state to disk.
 persistence = ["dep:home", "egui-winit/serde", "egui/persistence", "ron", "serde"]
 
-## If set, xframe will look for the env-var `XFRAME_SCREENSHOT_TO` and write a screenshot to that location, and then quit.
-## This is used to generate images for examples.
-__screenshot = []
-
 [dependencies]
 egui = { workspace = true, default-features = false, features = ["bytemuck"] }
 

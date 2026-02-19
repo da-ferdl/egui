@@ -21,55 +21,44 @@ pub use epi::*;
 #[cfg(target_os = "android")]
 pub use winit::platform::android::activity::AndroidApp;
 
-pub(crate) mod stopwatch;
-
 pub mod icon_data;
-mod native;
+mod wgpu_winit_app;
 
 #[cfg(feature = "persistence")]
-pub use native::file_storage::storage_dir;
+pub use wgpu_winit_app::file_storage::storage_dir;
 
-/// Provides a [winit::application::ApplicationHandler] implementation to create your
-/// own proxy type.
-pub fn create_native_handler<'a, U: Send>(
+/// Call this to get properties to setup your app and the runner to run your app.
+pub fn get_create_context<T: Send>(
     app_name: &str,
-    mut native_options: NativeOptions<U>,
-    app_creator: AppCreator<'a>,
-    event_loop: &winit::event_loop::EventLoop<UserEvent<U>>,
-) -> Box<dyn winit::application::ApplicationHandler<UserEvent<U>> + 'a> {
-    log::debug!("Using 'xframe::create_native_handler' with wgpu renderer");
+    native_options: NativeOptions,
+) -> Result<CreateContext<T>> {
+    let app_name = app_name.to_string();
+    let storage = if let Some(file) = &native_options.persistence_path {
+        crate::wgpu_winit_app::create_storage_with_file(file)
+    } else {
+        crate::wgpu_winit_app::create_storage(
+            native_options.viewport.app_id.as_ref().unwrap_or(&app_name),
+        )
+    };
+    let egui_ctx = wgpu_winit_app::create_egui_context(storage.as_deref());
+    let runner = Runner::new(app_name, native_options, storage, egui_ctx.clone())?;
+    let proxy = XFrameProxy::new(runner.create_proxy());
 
-    #[cfg(not(feature = "__screenshot"))]
-    assert!(
-        std::env::var("XFRAME_SCREENSHOT_TO").is_err(),
-        "XFRAME_SCREENSHOT_TO found without compiling with the '__screenshot' feature"
-    );
-
-    #[cfg(target_os = "ios")]
-    if native_options.run_and_return {
-        // On iOS 'run_and_return' ('EventLoop::run_app_on_demand')
-        // is not not supported, so it is changed to 'false'.
-        native_options.run_and_return = false;
-    }
-
-    if native_options.viewport.title.is_none() {
-        native_options.viewport.title = Some(app_name.to_owned());
-    }
-
-    Box::new(native::run::create_wgpu(
-        app_name,
-        native_options,
-        app_creator,
-        event_loop,
-    ))
+    Ok(CreateContext {
+        egui_ctx,
+        proxy,
+        runner,
+    })
 }
 
 /// The different problems that can occur when trying to run `xframe`.
 #[derive(Debug)]
 pub enum Error {
-    /// Something went wrong in user code when creating the app.
-    AppCreation(Box<dyn std::error::Error + Send + Sync>),
+    /// Something went wrong in user code when trying to gat android-app
+    /// from native options.
+    AndroidApp(Box<dyn std::error::Error + Send + Sync>),
 
+    /// An error from [`winit`]
     Winit(winit::error::OsError),
 
     /// An error from [`winit::event_loop::EventLoop`].
@@ -105,7 +94,9 @@ impl From<egui_wgpu::WgpuError> for Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::AppCreation(err) => write!(f, "app creation error: {err}"),
+            Self::AndroidApp(err) => {
+                write!(f, "AndroidApp error: {err}")
+            }
 
             Self::Winit(err) => {
                 write!(f, "winit error: {err}")
