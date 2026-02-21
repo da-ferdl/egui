@@ -534,13 +534,13 @@ impl<U: Send> WgpuWinitRunning<U> {
     /// Sends the event to the user app - the user app returns the event back
     /// if it should be processed, otherwise `None`.
     pub fn on_app_intercept_window_event(&mut self, event: WindowEvent) -> Option<WindowEvent> {
-        self.app.winit_intercept_window_event(event)
+        self.app.winit_window_event_hook(event)
     }
 
     /// Sends the event to the user app - the user app returns the event back
     /// if it should be processed, otherwise `None`.
     pub fn on_app_intercept_device_event(&mut self, event: DeviceEvent) -> Option<DeviceEvent> {
-        self.app.winit_intercept_device_event(event)
+        self.app.winit_device_event_hook(event)
     }
 
     fn handle_app_life_cycle_result(&mut self, result: Option<Vec<AppLifeCycleState>>) {

@@ -106,19 +106,19 @@ pub trait XFrameApp<T> {
         true
     }
 
-    /// Winit application handler `WindowEvent` - use if you want to intercept window events from winit
-    /// before they are processed by egui.
+    /// Hooks into the from winit application-handler sent `WindowEvent` - use if you want to intercept
+    /// window events from winit before they are processed by egui.
     ///
     /// -> return the event back to the caller if it should be processed, otherwise return `None` - event is ignored.
-    fn winit_intercept_window_event(&mut self, event: WindowEvent) -> Option<WindowEvent> {
+    fn winit_window_event_hook(&mut self, event: WindowEvent) -> Option<WindowEvent> {
         Some(event)
     }
 
-    /// Winit application handler `DeviceEvent` - use if you want to intercept device events from winit
-    /// before they are processed by egui.
+    /// Hooks into  the from winit application handler sent `DeviceEvent` - use if you want to intercept
+    /// device events from winit before they are processed by egui.
     ///
     /// -> return the event back to the caller if it should be processed, otherwise return `None` - event is ignored.
-    fn winit_intercept_device_event(&mut self, event: DeviceEvent) -> Option<DeviceEvent> {
+    fn winit_device_event_hook(&mut self, event: DeviceEvent) -> Option<DeviceEvent> {
         Some(event)
     }
 }
