@@ -87,7 +87,7 @@ pub enum TextStyle {
     /// ```
     /// egui::TextStyle::Name("footing".into());
     /// ````
-    Name(std::sync::Arc<str>),
+    Name(std::rc::Rc<str>),
 }
 
 impl std::fmt::Display for TextStyle {

@@ -110,7 +110,7 @@ impl ThemePreference {
                     }
                 });
 
-            ui.selectable_value(self, Self::Dark, "🌙 Dark")
+            ui.selectable_value(self, Self::Dark, "🌒 Dark")
                 .on_hover_text("Use the dark mode theme");
 
             ui.selectable_value(self, Self::Light, "☀ Light")
