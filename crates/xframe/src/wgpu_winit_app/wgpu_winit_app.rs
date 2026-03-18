@@ -1,6 +1,6 @@
 use super::{
     EventResult, SharedState, UserEvent, Viewport, Viewports, WgpuWinitRunning, create_window,
-    event_loop_context, load_default_egui_icon, render_immediate_viewport,
+    event_loop_context, render_immediate_viewport,
 };
 use crate::{NativeOptions, Result, StartContext, Storage, XFrameApp};
 use ahash::HashMap;
@@ -227,12 +227,7 @@ impl<U: Send> WgpuWinitApp<U> {
             });
         }
 
-        let icon = self
-            .native_options
-            .viewport
-            .icon
-            .clone()
-            .unwrap_or_else(|| Rc::new(load_default_egui_icon()));
+        let icon = self.native_options.viewport.icon.clone();
 
         Ok(self.running.insert(WgpuWinitRunning::new(
             frame,
@@ -244,7 +239,7 @@ impl<U: Send> WgpuWinitApp<U> {
                     .title
                     .clone()
                     .unwrap_or_else(|| self.app_name.clone()),
-                Some(icon),
+                icon,
             ),
             app,
             shared,

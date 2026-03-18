@@ -601,12 +601,6 @@ pub(super) fn create_storage_with_file(
 
 // ----------------------------------------------------------------------------
 
-pub(super) fn load_default_egui_icon() -> egui::IconData {
-    profiling::function_scope!();
-    #[expect(clippy::unwrap_used)]
-    crate::icon_data::from_png_bytes(&include_bytes!("../../data/icon.png")[..]).unwrap()
-}
-
 pub(super) fn load_window_settings(
     _storage: Option<&dyn crate::epi::Storage>,
 ) -> Option<WindowSettings> {
