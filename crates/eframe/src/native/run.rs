@@ -9,8 +9,10 @@ use winit::{
 use ahash::HashMap;
 
 use super::winit_integration::{UserEvent, WinitApp};
+#[cfg(not(target_os = "ios"))]
+use crate::{AppMessageSender, WinitEventInterceptorCreator};
 use crate::{
-    Result, epi,
+    Result, WinitEventInterceptor, epi,
     native::{event_loop_context, winit_integration::EventResult},
 };
 
@@ -37,6 +39,10 @@ fn create_event_loop(native_options: &mut epi::NativeOptions) -> Result<EventLoo
     profiling::scope!("EventLoopBuilder::build");
     Ok(builder.build()?)
 }
+
+/// Default dummy [WinitEventInterceptor] implementation for the standard eframe which does not use it.
+pub struct DefaultWinitEventInterceptorImpl;
+impl WinitEventInterceptor for DefaultWinitEventInterceptorImpl {}
 
 /// Access a thread-local event loop.
 ///
@@ -66,6 +72,7 @@ fn with_event_loop<R>(
 /// Wraps a [`WinitApp`] to implement [`ApplicationHandler`]. This handles redrawing, exit states, and
 /// some events, but otherwise forwards events to the [`WinitApp`].
 struct WinitAppWrapper<T: WinitApp> {
+    winit_event_interceptor: Box<dyn WinitEventInterceptor>,
     windows_next_repaint_times: HashMap<WindowId, Instant>,
     winit_app: T,
     return_result: Result<(), crate::Error>,
@@ -73,8 +80,13 @@ struct WinitAppWrapper<T: WinitApp> {
 }
 
 impl<T: WinitApp> WinitAppWrapper<T> {
-    fn new(winit_app: T, run_and_return: bool) -> Self {
+    fn new(
+        winit_event_interceptor: Box<dyn WinitEventInterceptor>,
+        winit_app: T,
+        run_and_return: bool,
+    ) -> Self {
         Self {
+            winit_event_interceptor,
             windows_next_repaint_times: HashMap::default(),
             winit_app,
             return_result: Ok(()),
@@ -205,6 +217,8 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
     fn suspended(&mut self, event_loop: &ActiveEventLoop) {
         profiling::scope!("Event::Suspended");
 
+        self.winit_event_interceptor.on_suspended();
+
         event_loop_context::with_event_loop_context(event_loop, move || {
             let event_result = self.winit_app.suspended(event_loop);
             self.handle_event_result(event_loop, event_result);
@@ -213,6 +227,8 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         profiling::scope!("Event::Resumed");
+
+        self.winit_event_interceptor.on_resumed();
 
         // Nb: Make sure this guard is dropped after this function returns.
         event_loop_context::with_event_loop_context(event_loop, move || {
@@ -225,6 +241,9 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
         // On Mac, Cmd-Q we get here and then `run_app_on_demand` doesn't return (despite its name),
         // so we need to save state now:
         log::debug!("Received Event::LoopExiting - saving app state…");
+
+        self.winit_event_interceptor.on_exiting();
+
         event_loop_context::with_event_loop_context(event_loop, move || {
             self.winit_app.save_and_destroy();
         });
@@ -238,6 +257,11 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
     ) {
         profiling::function_scope!(egui_winit::short_device_event_description(&event));
 
+        let event = match self.winit_event_interceptor.device_event_hook(event) {
+            Some(v) => v,
+            None => return,
+        };
+
         // Nb: Make sure this guard is dropped after this function returns.
         event_loop_context::with_event_loop_context(event_loop, move || {
             let event_result = self.winit_app.device_event(event_loop, device_id, event);
@@ -250,6 +274,7 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
             UserEvent::RequestRepaint { .. } => "UserEvent::RequestRepaint",
             #[cfg(feature = "accesskit")]
             UserEvent::AccessKitActionRequest(_) => "UserEvent::AccessKitActionRequest",
+            UserEvent::AppMsg(_) => "UserEvent::AppMsg",
         });
 
         event_loop_context::with_event_loop_context(event_loop, move || {
@@ -283,6 +308,14 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
                 UserEvent::AccessKitActionRequest(request) => {
                     self.winit_app.on_accesskit_event(request)
                 }
+
+                // Messages sent from the user with [AppMessageSender].
+                //
+                // -> This event is not processed by egui, so return in this case early!!
+                UserEvent::AppMsg(msg) => {
+                    self.winit_event_interceptor.on_app_message(msg);
+                    return;
+                }
             };
             self.handle_event_result(event_loop, event_result);
         });
@@ -304,6 +337,11 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
     ) {
         profiling::function_scope!(egui_winit::short_window_event_description(&event));
 
+        let event = match self.winit_event_interceptor.window_event_hook(event) {
+            Some(v) => v,
+            None => return,
+        };
+
         // Nb: Make sure this guard is dropped after this function returns.
         event_loop_context::with_event_loop_context(event_loop, move || {
             let event_result = match event {
@@ -319,22 +357,40 @@ impl<T: WinitApp> ApplicationHandler<UserEvent> for WinitAppWrapper<T> {
 }
 
 #[cfg(not(target_os = "ios"))]
-fn run_and_return(event_loop: &mut EventLoop<UserEvent>, winit_app: impl WinitApp) -> Result {
+fn run_and_return(
+    event_loop: &mut EventLoop<UserEvent>,
+    winit_app: impl WinitApp,
+    winit_event_interceptor_creator: Option<WinitEventInterceptorCreator>,
+) -> Result {
     use winit::platform::run_on_demand::EventLoopExtRunOnDemand as _;
 
     log::trace!("Entering the winit event loop (run_app_on_demand)…");
 
-    let mut app = WinitAppWrapper::new(winit_app, true);
+    let interceptor = match winit_event_interceptor_creator {
+        Some(v) => v(AppMessageSender::new(event_loop.create_proxy())),
+        None => Box::new(DefaultWinitEventInterceptorImpl),
+    };
+
+    let mut app = WinitAppWrapper::new(interceptor, winit_app, true);
     event_loop.run_app_on_demand(&mut app)?;
     log::debug!("eframe window closed");
     app.return_result
 }
 
-fn run_and_exit(event_loop: EventLoop<UserEvent>, winit_app: impl WinitApp) -> Result {
+fn run_and_exit(
+    event_loop: EventLoop<UserEvent>,
+    winit_app: impl WinitApp,
+    winit_event_interceptor_creator: Option<WinitEventInterceptorCreator>,
+) -> Result {
     log::trace!("Entering the winit event loop (run_app)…");
 
+    let interceptor = match winit_event_interceptor_creator {
+        Some(v) => v(AppMessageSender::new(event_loop.create_proxy())),
+        None => Box::new(DefaultWinitEventInterceptorImpl),
+    };
+
     // When to repaint what window
-    let mut app = WinitAppWrapper::new(winit_app, false);
+    let mut app = WinitAppWrapper::new(interceptor, winit_app, false);
     event_loop.run_app(&mut app)?;
 
     log::debug!("winit event loop unexpectedly returned");
@@ -348,6 +404,7 @@ pub fn run_glow(
     app_name: &str,
     mut native_options: epi::NativeOptions,
     app_creator: epi::AppCreator<'_>,
+    winit_event_interceptor_creator: Option<WinitEventInterceptorCreator>,
 ) -> Result {
     use super::glow_integration::GlowWinitApp;
 
@@ -355,13 +412,13 @@ pub fn run_glow(
     if native_options.run_and_return {
         return with_event_loop(native_options, |event_loop, native_options| {
             let glow_eframe = GlowWinitApp::new(event_loop, app_name, native_options, app_creator);
-            run_and_return(event_loop, glow_eframe)
+            run_and_return(event_loop, glow_eframe, winit_event_interceptor_creator)
         })?;
     }
 
     let event_loop = create_event_loop(&mut native_options)?;
     let glow_eframe = GlowWinitApp::new(&event_loop, app_name, native_options, app_creator);
-    run_and_exit(event_loop, glow_eframe)
+    run_and_exit(event_loop, glow_eframe, winit_event_interceptor_creator)
 }
 
 #[cfg(feature = "glow")]
@@ -374,7 +431,11 @@ pub fn create_glow<'a>(
     use super::glow_integration::GlowWinitApp;
 
     let glow_eframe = GlowWinitApp::new(event_loop, app_name, native_options, app_creator);
-    WinitAppWrapper::new(glow_eframe, true)
+    WinitAppWrapper::new(
+        Box::new(DefaultWinitEventInterceptorImpl),
+        glow_eframe,
+        true,
+    )
 }
 
 // ----------------------------------------------------------------------------
@@ -384,6 +445,7 @@ pub fn run_wgpu(
     app_name: &str,
     mut native_options: epi::NativeOptions,
     app_creator: epi::AppCreator<'_>,
+    winit_event_interceptor_creator: Option<WinitEventInterceptorCreator>,
 ) -> Result {
     use super::wgpu_integration::WgpuWinitApp;
 
@@ -391,13 +453,13 @@ pub fn run_wgpu(
     if native_options.run_and_return {
         return with_event_loop(native_options, |event_loop, native_options| {
             let wgpu_eframe = WgpuWinitApp::new(event_loop, app_name, native_options, app_creator);
-            run_and_return(event_loop, wgpu_eframe)
+            run_and_return(event_loop, wgpu_eframe, winit_event_interceptor_creator)
         })?;
     }
 
     let event_loop = create_event_loop(&mut native_options)?;
     let wgpu_eframe = WgpuWinitApp::new(&event_loop, app_name, native_options, app_creator);
-    run_and_exit(event_loop, wgpu_eframe)
+    run_and_exit(event_loop, wgpu_eframe, winit_event_interceptor_creator)
 }
 
 #[cfg(feature = "wgpu_no_default_features")]
@@ -410,7 +472,11 @@ pub fn create_wgpu<'a>(
     use super::wgpu_integration::WgpuWinitApp;
 
     let wgpu_eframe = WgpuWinitApp::new(event_loop, app_name, native_options, app_creator);
-    WinitAppWrapper::new(wgpu_eframe, true)
+    WinitAppWrapper::new(
+        Box::new(DefaultWinitEventInterceptorImpl),
+        wgpu_eframe,
+        true,
+    )
 }
 
 // ----------------------------------------------------------------------------

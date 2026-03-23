@@ -1,3 +1,11 @@
+### Fork info:
+
+This provides is a customized `eframe` version.
+
+Adds the `run_with_interceptor_native` function as alternative to `run_native` and provides:
+- `AppMessageSender` to send messages from any thread to the winit event loop thread.
+- `WinitEventInterceptor` to intercept / hook into winit events and receive messages sent with `AppMessageSender` on the winit event loop thread.
+
 # eframe: the [`egui`](https://github.com/emilk/egui) framework
 
 [![Latest version](https://img.shields.io/crates/v/eframe.svg)](https://crates.io/crates/eframe)

@@ -1,3 +1,10 @@
+### Fork Notice
+
+This branch is made from egui version 0.33.3, with included commits from main the branch until (and including):<br>
+Commit b733679 ('Fix text color when selecting newline character (#7951)' / SHA: b73367976017c7868946ae330c0e30cbb9d5a56c)
+
+The purpose of this branch is to provide a customized `eframe` version.
+
 # 🖌 egui: an easy-to-use GUI in pure Rust
 
 [<img alt="github" src="https://img.shields.io/badge/github-emilk/egui-8da0cb?logo=github" height="20">](https://github.com/emilk/egui)

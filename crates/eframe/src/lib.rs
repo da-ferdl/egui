@@ -264,13 +264,54 @@ pub fn run_native(
         #[cfg(feature = "glow")]
         Renderer::Glow => {
             log::debug!("Using the glow renderer");
-            native::run::run_glow(app_name, native_options, app_creator)
+            native::run::run_glow(app_name, native_options, app_creator, None)
         }
 
         #[cfg(feature = "wgpu_no_default_features")]
         Renderer::Wgpu => {
             log::debug!("Using the wgpu renderer");
-            native::run::run_wgpu(app_name, native_options, app_creator)
+            native::run::run_wgpu(app_name, native_options, app_creator, None)
+        }
+    }
+}
+
+/// Custom variant of [run_native] to use with the [WinitEventInterceptor]
+/// and [AppMessageSender].
+///
+/// # Errors
+/// This function can fail if we fail to set up a graphics context.
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(feature = "glow", feature = "wgpu_no_default_features"))]
+#[allow(clippy::allow_attributes, clippy::needless_pass_by_value)]
+pub fn run_with_interceptor_native(
+    app_name: &str,
+    mut native_options: NativeOptions,
+    winit_event_interceptor_creator: WinitEventInterceptorCreator,
+    app_creator: AppCreator<'_>,
+) -> Result {
+    let renderer = init_native(app_name, &mut native_options);
+
+    match renderer {
+        #[cfg(feature = "glow")]
+        Renderer::Glow => {
+            log::debug!("Using the glow renderer");
+            native::run::run_glow(
+                app_name,
+                native_options,
+                app_creator,
+                Some(winit_event_interceptor_creator),
+            )
+        }
+
+        #[cfg(feature = "wgpu_no_default_features")]
+        Renderer::Wgpu => {
+            log::debug!("Using the wgpu renderer");
+            native::run::run_wgpu(
+                app_name,
+                native_options,
+                app_creator,
+                Some(winit_event_interceptor_creator),
+            )
         }
     }
 }

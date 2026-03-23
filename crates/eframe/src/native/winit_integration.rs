@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::{any::Any, sync::Arc, time::Instant};
 
 use winit::{
     event_loop::ActiveEventLoop,
@@ -57,6 +57,9 @@ pub enum UserEvent {
     /// A request related to [`accesskit`](https://accesskit.dev/).
     #[cfg(feature = "accesskit")]
     AccessKitActionRequest(accesskit_winit::Event),
+
+    /// Variant for [AppMessageSender].
+    AppMsg(Box<dyn Any + Send>),
 }
 
 #[cfg(feature = "accesskit")]

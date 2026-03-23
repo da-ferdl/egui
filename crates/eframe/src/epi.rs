@@ -6,6 +6,7 @@
 
 #![warn(missing_docs)] // Let's keep `epi` well-documented.
 
+use std::any::Any;
 #[cfg(target_arch = "wasm32")]
 use std::any::Any;
 
@@ -21,6 +22,10 @@ use raw_window_handle::{
 #[cfg(not(target_arch = "wasm32"))]
 use static_assertions::assert_not_impl_any;
 
+use winit::{
+    event::{DeviceEvent, WindowEvent},
+    event_loop::EventLoopProxy,
+};
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(any(feature = "glow", feature = "wgpu_no_default_features"))]
 pub use winit::{event_loop::EventLoopBuilder, window::WindowAttributes};
@@ -48,6 +53,13 @@ type DynError = Box<dyn std::error::Error + Send + Sync>;
 /// You can use the [`CreationContext`] to setup egui, restore state, setup OpenGL things, etc.
 pub type AppCreator<'app> =
     Box<dyn 'app + FnOnce(&CreationContext<'_>) -> Result<Box<dyn 'app + App>, DynError>>;
+
+/// Creates your [WinitEventInterceptor].
+///
+/// You can use the [AppMessageSender] to send messages to the
+/// winit event loop thread.
+pub type WinitEventInterceptorCreator =
+    Box<dyn FnOnce(AppMessageSender) -> Box<dyn WinitEventInterceptor>>;
 
 /// Data that is passed to [`AppCreator`] that can be used to setup and initialize your app.
 pub struct CreationContext<'s> {
@@ -273,6 +285,67 @@ pub trait App {
     ///
     /// This function does not return a value. Any changes to the input should be made directly to `_raw_input`.
     fn raw_input_hook(&mut self, _ctx: &egui::Context, _raw_input: &mut egui::RawInput) {}
+}
+
+/// Implement this trait intercept winit events and messages sent with the [AppMessageSender].
+pub trait WinitEventInterceptor {
+    /// Winit application-handler sent a `resumed` event.
+    fn on_resumed(&mut self) {}
+
+    /// Winit application-handler sent a `suspended` event.
+    fn on_suspended(&mut self) {}
+
+    /// Winit application-handler sent a `exiting` event.
+    fn on_exiting(&mut self) {}
+
+    /// Hooks into the from winit application-handler sent `WindowEvent` - use if you want to intercept
+    /// window events from winit before they are processed by egui.
+    ///
+    /// -> return the event back to the caller if it should be processed, otherwise return `None` - event is ignored.
+    fn window_event_hook(&mut self, event: WindowEvent) -> Option<WindowEvent> {
+        Some(event)
+    }
+
+    /// Hooks into  the from winit application handler sent `DeviceEvent` - use if you want to intercept
+    /// device events from winit before they are processed by egui.
+    ///
+    /// -> return the event back to the caller if it should be processed, otherwise return `None` - event is ignored.
+    fn device_event_hook(&mut self, event: DeviceEvent) -> Option<DeviceEvent> {
+        Some(event)
+    }
+
+    /// Called when a `msg` event is received on on the winit event loop thread, which was sent with
+    /// the [AppMessageSender].
+    fn on_app_message(&mut self, msg: Box<dyn Any>) {
+        let _ = msg;
+    }
+}
+
+/// Sender to send your custom message events from any thread to the winit event loop thread.
+///
+/// To receive the message implement the  [WinitEventInterceptor::on_app_message] method
+/// on your [WinitEventInterceptor] implementation.
+pub struct AppMessageSender(EventLoopProxy<UserEvent>);
+impl AppMessageSender {
+    /// Creates a new `AppMessageSender` with the given winit event-loop proxy.
+    pub fn new(event_loop_proxy: EventLoopProxy<UserEvent>) -> Self {
+        Self(event_loop_proxy)
+    }
+
+    /// Sends the given `msg` to the winit event loop thread.
+    ///
+    /// To receive the message implement the  [WinitEventInterceptor::on_app_message] method
+    /// on your [WinitEventInterceptor] implementation.
+    ///
+    /// If the result is `Ok` the message was successfully sent, otherwise the message was not
+    /// sent because the winit event-loop is already closed.
+    pub fn send(&self, msg: Box<dyn Any + Send>) -> Result<(), ()> {
+        if self.0.send_event(UserEvent::AppMsg(msg)).is_err() {
+            return Err(());
+        }
+
+        Ok(())
+    }
 }
 
 /// Selects the level of hardware graphics acceleration.
