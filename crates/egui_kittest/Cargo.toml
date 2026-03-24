@@ -41,7 +41,7 @@ egui = { git = "https://github.com/emilk/egui", branch = "main" }
 eframe = { git = "https://github.com/emilk/egui", branch = "main", optional = true }
 kittest.workspace = true
 serde.workspace = true
-toml.workspace = true
+toml = {workspace = true, features = ["parse", "serde"] }
 
 # wgpu dependencies
 egui-wgpu = { git = "https://github.com/emilk/egui", branch = "main", optional = true }
