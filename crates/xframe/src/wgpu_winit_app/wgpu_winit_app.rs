@@ -686,9 +686,10 @@ impl<U: Send> ApplicationHandler<UserEvent<U>> for WgpuWinitApp<U> {
     fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: winit::event::StartCause) {
         if let winit::event::StartCause::ResumeTimeReached { .. } = cause {
             log::trace!("Woke up to check next_repaint_time");
-        }
 
-        self.check_redraw_requests(event_loop);
+            println!("## new_events - {:#?}", cause);
+            self.check_redraw_requests(event_loop);
+        }
     }
 
     fn window_event(
