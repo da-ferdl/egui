@@ -13,6 +13,7 @@ members = [
   "crates/emath",
   "crates/epaint",
   "crates/epaint_default_fonts",
+  "crates/xframe",
 
   "examples/*",
   "tests/*",
@@ -67,6 +68,7 @@ egui_demo_lib = { version = "0.33.3", path = "crates/egui_demo_lib", default-fea
 egui_glow = { version = "0.33.3", path = "crates/egui_glow", default-features = false }
 egui_kittest = { version = "0.33.3", path = "crates/egui_kittest", default-features = false }
 eframe = { version = "0.33.3", path = "crates/eframe", default-features = false }
+xframe = { version = "0.33.3", path = "crates/xframe", default-features = false }
 
 accesskit = "0.24.0"
 accesskit_consumer = "0.35.0"
@@ -130,6 +132,7 @@ smallvec = "1.15.1"
 smithay-clipboard = "0.7.2"
 static_assertions = "1.1.0"
 syntect = { version = "5.3.0", default-features = false }
+sync-utils = { version = "0.1.0", git = "https://github.com/da-ferdl/sync-utils", branch = "main" }
 tempfile = "3.23.0"
 thiserror = "2.0.17"
 tokio = "1.49"
@@ -146,7 +149,9 @@ web-time = "1.1.0" # Timekeeping for native and web
 webbrowser = "1.0.5"
 wgpu = { version = "28.0.0", default-features = false, features = ["std"] }
 windows-sys = "0.61.2"
-winit = { version = "0.30.12", default-features = false }
+# patch with android game-activity version 4.0 (instead of version 2.0) included.
+winit = { version = "0.30.12", default-features = false, git = "https://github.com/da-ferdl/winit", branch = "dev_winit_v0.30.12" }
+#winit = { version = "0.30.12", default-features = false, path = "../winit-fork" }
 
 [patch.crates-io]
 kittest = { git = "https://github.com/rerun-io/kittest", branch = "main" }

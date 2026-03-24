@@ -45,7 +45,7 @@ x11 = ["eframe/x11"]
 chrono = { workspace = true, features = ["js-sys", "wasmbind"] }
 eframe = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["web_screen_reader"] }
 egui = { git = "https://github.com/emilk/egui", branch = "main", features = ["callstack", "default"] }
-egui_demo_lib = { git = "https://github.com/emilk/egui", branch = "main", features = ["default", "chrono"] }
+egui_demo_lib = { git = "https://github.com/emilk/egui", branch = "main", features = ["default"] }
 egui_extras = { git = "https://github.com/emilk/egui", branch = "main", features = ["default", "image"] }
 image = { workspace = true, default-features = false, features = [
   # Ensure we can display the test images
